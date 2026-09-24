@@ -1,0 +1,8 @@
+# 永不进仓库
+.gh_token
+_server_out.txt
+_server_err.txt
+_backup_*.js
+__pycache__/
+*.log
+_tmp_*
