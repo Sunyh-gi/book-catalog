@@ -224,10 +224,39 @@
   .cloud-btn { font-size: 12px; color: #6B6B6B; padding: 3px 8px; border-radius: 5px; }
   .cloud-btn:hover { background: var(--ctrl); color: var(--solid); }
   .cloud-state { font-size: 11px; color: var(--label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cloud-form { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
-  .cloud-label { font-size: 11px; color: var(--label); margin-top: 8px; }
-  .cloud-hr { border-top: 1px solid var(--stroke-soft); margin: 18px 0 12px; }
-  .cloud-ops { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* —— 云同步弹层（设计稿-05：460 宽 / 分区标题+状态徽标 / 操作区主次分明） —— */
+  .cloud-panel { box-sizing: border-box; width: 460px; max-width: calc(100vw - 32px); max-height: 86vh; overflow: auto;
+    background: #fff; border-radius: 16px; padding: 24px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18); }
+  .cloud-sec { margin-top: 20px; }
+  .cloud-sec + .cloud-sec { margin-top: 18px; }
+  .cloud-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .cloud-sec-title { font-size: 13px; font-weight: 500; color: var(--solid); }
+  .cloud-sec-title .opt { margin-left: 6px; font-size: 12px; font-weight: 400; color: var(--label); }
+  .cloud-badge { flex: 0 0 auto; font-size: 11px; line-height: 16px; padding: 2px 8px; border-radius: 999px;
+    background: var(--solid); color: #fff; }
+  .cloud-badge.off { background: #fff; color: var(--label); border: 1px solid #DCDCDC; }
+  .cloud-hint { margin-top: 6px; font-size: 12px; line-height: 17px; color: var(--label); }
+  .cloud-input { box-sizing: border-box; margin-top: 6px; width: 100%; height: 36px; border: none; outline: none;
+    background: var(--ctrl); border-radius: 6px; padding: 0 12px; font-size: 13px; color: var(--ink); }
+  .cloud-input::placeholder { color: var(--label); }
+  .cloud-fold { margin-top: 6px; font-size: 12px; line-height: 17px; color: #6B6B6B; cursor: pointer; }
+  .cloud-fold:hover { color: var(--solid); }
+  .cloud-doc { margin-top: 6px; font-size: 12px; line-height: 17px; color: #6B6B6B; }
+  .cloud-steps { margin-top: 8px; font-size: 11px; line-height: 18px; color: var(--assist);
+    background: #FAFAFA; border-radius: 6px; padding: 10px 12px; }
+  .cloud-steps b { font-weight: 500; color: var(--ink); }
+  .cloud-hr { border-top: 1px solid var(--stroke-soft); margin: 20px 0 0; }
+  .cloud-actions { margin-top: 16px; display: flex; gap: 10px; }
+  .btn-cloud-main { flex: 1; height: 36px; border-radius: 6px; background: var(--solid);
+    color: #fff; font-size: 13px; font-weight: 500; }
+  .btn-cloud-main:hover:not(:disabled) { background: #454545; }
+  .btn-cloud-main:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-cloud-sub { flex: 1; height: 36px; border-radius: 6px; background: #fff;
+    border: 1px solid #DCDCDC; color: var(--solid); font-size: 13px; }
+  .btn-cloud-sub:hover { border-color: #C4C4C4; }
+  .cloud-note { margin-top: 10px; font-size: 11px; line-height: 16px; color: var(--label); }
 
   @media (max-width: 1240px) {
     .main { padding: 14px 48px 28px; }
@@ -331,37 +360,48 @@
     </div>
   </div>
 
-  <!-- 云同步弹层（GitHub 仓库存储） -->
+  <!-- 云同步弹层（GitHub 仓库存储；版式对齐设计稿-05） -->
   <div class="overlay" id="cloudOverlay" hidden>
-    <div class="genre-panel">
+    <div class="cloud-panel">
       <div class="add-head">
         <div>
-          <h2>云同步 · GitHub</h2>
-          <p>多设备共享同一份书库；快照存于 book-catalog 仓库（library.json），上传需 Token，恢复免费</p>
+          <h2>云同步</h2>
+          <p>多设备共享同一份书库 · 快照存于 book-catalog 仓库</p>
         </div>
         <button class="close-btn" id="btnCloseCloud" title="关闭">×</button>
       </div>
-      <div class="cloud-form">
-        <label class="cloud-label">GitHub Fine-grained PAT（仅上传时需要）</label>
-        <input class="f-input" id="cloudToken" type="password" placeholder="粘贴 Personal Access Token" autocomplete="off">
-        <p class="note">获取：GitHub → Settings → Developer settings → Fine-grained tokens → Generate：<br>
-        ① Repository access 选「Only select repositories」→ 勾选 <b>book-catalog</b><br>
-        ② Permissions → Contents → 「Read and write」→ 生成后复制粘贴到这里<br>
-        ③ Token 只存在你的浏览器里，且仅能读写 book-catalog 一个仓库</p>
-        <div class="cloud-hr"></div>
-        <label class="cloud-label">豆瓣云端服务 URL（可选——手机等无法跑本地服务的设备，填 Cloudflare Worker 地址）</label>
-        <input class="f-input" id="cloudDoubanUrl" type="url" placeholder="https://douban.你的域名（部署见 cloudflare\部署说明.md）" autocomplete="off">
-        <p class="note">配置后，本机服务不可用时自动改用云端豆瓣代理（顺序：本机 → 云端）。探测结果见「添加图书」弹层顶部提示。</p>
+
+      <div class="cloud-sec">
+        <div class="cloud-sec-head">
+          <span class="cloud-sec-title">书库快照 · GitHub</span>
+          <span class="cloud-badge off" id="badgeToken">未配置</span>
+        </div>
+        <p class="cloud-hint">Fine-grained PAT，仅上传时需要</p>
+        <input class="cloud-input" id="cloudToken" type="password" placeholder="粘贴 Personal Access Token" autocomplete="off">
+        <p class="cloud-fold" id="cloudFold">▸ 如何生成 Token · 三步说明</p>
+        <div class="cloud-steps" id="cloudSteps" hidden>
+          ① Repository access 选「Only select repositories」→ 勾选 <b>book-catalog</b><br>
+          ② Permissions → Contents → 设为「Read and write」<br>
+          ③ 生成后粘贴到上方输入框；Token 只存在你的浏览器，且仅能读写 book-catalog 一个仓库
+        </div>
       </div>
-      <div class="form-actions">
-        <button class="btn-add" id="btnCloudSave">保存配置</button>
+
+      <div class="cloud-sec">
+        <div class="cloud-sec-head">
+          <span class="cloud-sec-title">豆瓣云端服务<span class="opt">可选</span></span>
+          <span class="cloud-badge off" id="badgeDouban">未配置</span>
+        </div>
+        <p class="cloud-hint">手机等无法跑本地服务的设备填 Worker 地址</p>
+        <input class="cloud-input" id="cloudDoubanUrl" type="url" placeholder="https://douban.你的域名" autocomplete="off">
+        <p class="cloud-doc">部署说明见 cloudflare/部署说明.md；配置后本机服务不可用时自动回落云端</p>
       </div>
+
       <div class="cloud-hr"></div>
-      <div class="cloud-ops">
-        <button class="btn-ghost" id="btnCloudUp">同步到云端（与云端合并）</button>
-        <button class="btn-ghost" id="btnCloudDown">从云端恢复（覆盖本地）</button>
+      <div class="cloud-actions">
+        <button class="btn-cloud-main" id="btnCloudUp">同步到云端</button>
+        <button class="btn-cloud-sub" id="btnCloudDown">从云端恢复</button>
       </div>
-      <p class="note" id="cloudNote"></p>
+      <p class="cloud-note" id="cloudNote">Token 仅存本机浏览器 · 恢复不需要 Token</p>
     </div>
   </div>
 
@@ -984,11 +1024,23 @@
       var cfg = cloudCfg();
       document.getElementById("cloudToken").value = cfg ? cfg.token : "";
       document.getElementById("cloudDoubanUrl").value = doubanCloudUrl();
-      setCloudNote(cfg ? "Token 已保存。「上传到云端」覆盖云端数据；「从云端恢复」覆盖本机。读取/恢复不需要 Token。"
-                       : "首次使用：按下方说明生成 Fine-grained PAT 并粘贴保存。恢复云端数据不需要 Token。");
+      document.getElementById("cloudSteps").hidden = true;
+      document.getElementById("cloudFold").textContent = "▸ 如何生成 Token · 三步说明";
+      updateCloudBadges();
+      setCloudNote("Token 仅存本机浏览器 · 恢复不需要 Token");
       document.getElementById("cloudOverlay").hidden = false;
     }
     function closeCloud() { document.getElementById("cloudOverlay").hidden = true; }
+    function updateCloudBadges() {
+      var cfg = cloudCfg();
+      var bt = document.getElementById("badgeToken");
+      if (bt) { bt.textContent = cfg ? "已配置" : "未配置"; bt.className = "cloud-badge" + (cfg ? "" : " off"); }
+      var url = doubanCloudUrl();
+      var bd = document.getElementById("badgeDouban");
+      if (bd) { bd.textContent = url ? "已配置" : "未配置"; bd.className = "cloud-badge" + (url ? "" : " off"); }
+      var up = document.getElementById("btnCloudUp");
+      if (up) up.disabled = !cfg;
+    }
     function cloudSave() {
       var token = document.getElementById("cloudToken").value.trim();
       var doubanUrl = document.getElementById("cloudDoubanUrl").value.trim().replace(/\/+$/, "");
@@ -996,7 +1048,8 @@
       if (doubanUrl) localStorage.setItem("booklib.doubancloud", JSON.stringify({ url: doubanUrl }));
       else localStorage.removeItem("booklib.doubancloud");
       updateCloudState();
-      setCloudNote("✅ 配置已保存。" + (doubanUrl ? "豆瓣云端已启用，正在重新探测…" : "豆瓣云端已清除。"));
+      updateCloudBadges();
+      setCloudNote(token ? "✅ Token 已保存（仅存本机浏览器）" : "未配置 Token：同步到云端不可用，恢复云端数据仍可用。");
       if (doubanUrl) probeDouban();
     }
     function ghHeaders(cfg) {
@@ -1304,9 +1357,17 @@
     document.getElementById("btnCloseGenre").addEventListener("click", closeGenre);
     document.getElementById("btnCloud").addEventListener("click", openCloud);
     document.getElementById("btnCloseCloud").addEventListener("click", closeCloud);
-    document.getElementById("btnCloudSave").addEventListener("click", cloudSave);
     document.getElementById("btnCloudUp").addEventListener("click", cloudUpload);
     document.getElementById("btnCloudDown").addEventListener("click", cloudRestore);
+    /* 云同步：配置项失焦即自动保存（无独立保存按钮）；折叠三步说明 */
+    document.getElementById("cloudToken").addEventListener("change", cloudSave);
+    document.getElementById("cloudDoubanUrl").addEventListener("change", cloudSave);
+    document.getElementById("cloudFold").addEventListener("click", function () {
+      var s = document.getElementById("cloudSteps");
+      var nowOpen = s.hidden;
+      s.hidden = !nowOpen;
+      this.textContent = (nowOpen ? "▾ " : "▸ ") + "如何生成 Token · 三步说明";
+    });
     document.getElementById("btnGenreAdd").addEventListener("click", genreAdd);
     document.getElementById("gNew").addEventListener("keydown", function (e) {
       if (e.key === "Enter") genreAdd();
