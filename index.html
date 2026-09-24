@@ -375,10 +375,11 @@
 
     var state = { view: { kind: "all", value: "" }, q: "", sort: "pubDate" };
     var statusTargetId = null;
-    /* 豆瓣本地代理（_douban_server.py）；页面启动时探测，可用 ?svc= 覆盖地址 */
+    /* 豆瓣本地代理（_douban_server.py）；页面启动时探测，可用 ?svc= 覆盖地址。
+       localhost 优先（多数代理软件默认 bypass localhost），127.0.0.1 兜底 */
     var DOUBAN_SVC = (function () {
       var m = location.search.match(/[?&]svc=([^&]+)/);
-      return m ? decodeURIComponent(m[1]) : "http://127.0.0.1:8765";
+      return m ? decodeURIComponent(m[1]) : "http://localhost:8765";
     })();
     var doubanOnline = false;
     var selectedDouban = null;
@@ -745,19 +746,28 @@
       if (hint) hint.textContent = "已匹配版本，可直接加入书库或重新搜索";
     }
     function probeDouban() {
-      var ctrl = new AbortController();
-      var timer = setTimeout(function () { ctrl.abort(); }, 1500);
-      fetch(DOUBAN_SVC + "/health", { mode: "cors", signal: ctrl.signal })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) {
-          clearTimeout(timer);
-          if (j && j.ok) {
-            doubanOnline = true;
-            var hint = document.getElementById("addHint");
-            if (hint) hint.textContent = "豆瓣在线 · 输入书名或 ISBN 搜索候选版本后自动填充";
-          }
-        })
-        .catch(function () { clearTimeout(timer); });
+      var m = location.search.match(/[?&]svc=([^&]+)/);
+      var list = m ? [decodeURIComponent(m[1])]
+                   : ["http://localhost:8765", "http://127.0.0.1:8765"];
+      var tryNext = function (i) {
+        if (i >= list.length) return;
+        var base = list[i];
+        var ctrl = new AbortController();
+        var timer = setTimeout(function () { ctrl.abort(); }, 1500);
+        fetch(base + "/health", { mode: "cors", signal: ctrl.signal })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) {
+            clearTimeout(timer);
+            if (j && j.ok) {
+              DOUBAN_SVC = base;
+              doubanOnline = true;
+              var hint = document.getElementById("addHint");
+              if (hint) hint.textContent = "豆瓣在线 · 输入书名或 ISBN 搜索候选版本后自动填充";
+            } else { tryNext(i + 1); }
+          })
+          .catch(function () { clearTimeout(timer); tryNext(i + 1); });
+      };
+      tryNext(0);
     }
     function submitManual() {
       var title = document.getElementById("mTitle").value.trim();
@@ -923,7 +933,9 @@
         return '<div class="m-row"><span class="m-label">' + m[0] +
           '</span><span class="m-value">' + esc(m[1]) + '</span></div>';
       }).join('');
-      var acts = '<button class="d-linkish" id="dDel">删除</button>';
+      var acts = '<button class="d-linkish" id="dUpload" title="选择本地图片作为封面">上传封面</button>' +
+        '<input type="file" id="dUploadInput" accept="image/*" hidden>' +
+        '<button class="d-linkish" id="dDel">删除</button>';
       document.getElementById('detailPanel').innerHTML =
         '<div class="d-row">' + cover +
         '<div class="d-info"><div class="d-head"><h2>' + esc(b.title) + '</h2>' +
@@ -1002,6 +1014,30 @@
         }
         return;
       }
+      var up = e.target.closest('#dUpload');
+      if (up) {
+        var inp = document.getElementById('dUploadInput');
+        if (inp) inp.click();
+        return;
+      }
+    });
+    document.getElementById('detailPanel').addEventListener('change', function (e) {
+      if (e.target.id !== 'dUploadInput' || !detailId) return;
+      var f = e.target.files && e.target.files[0];
+      if (!f) return;
+      if (f.size > 3 * 1024 * 1024) {
+        alert('图片超过 3MB，请先压缩再上传（封面会存入浏览器，注意体积）');
+        e.target.value = '';
+        return;
+      }
+      var fr = new FileReader();
+      fr.onload = function () {
+        store.cover[detailId] = fr.result;
+        saveStore();
+        renderAll();
+        openDetail(detailId);
+      };
+      fr.readAsDataURL(f);
     });
 
     /* 题材管理弹层 */
