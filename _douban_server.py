@@ -19,7 +19,7 @@
  *
  * 零第三方依赖：http.server + urllib（复用 _douban_fetch 的抓取逻辑）。
  * ============================================================ """
-import json, re, sys, time, urllib.parse, urllib.request
+import base64, json, re, sys, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from _douban_fetch import CACHE, ROOT, UA, http_get, parse_subject
@@ -183,7 +183,9 @@ class Handler(BaseHTTPRequestHandler):
                     covers = ROOT / "covers"
                     covers.mkdir(exist_ok=True)
                     (covers / (book_id + ".jpg")).write_bytes(body)
-                    self._send({"ok": True, "cover": "covers/%s.jpg" % book_id})
+                    # dataUrl 与页面来源无关：线上 Pages / 本地 file:// 均可直接显示
+                    data_url = "data:image/jpeg;base64," + base64.b64encode(body).decode()
+                    self._send({"ok": True, "cover": "covers/%s.jpg" % book_id, "dataUrl": data_url})
                 except Exception as e:
                     self._send({"error": "save_cover failed: %s" % e}, 502)
             else:
