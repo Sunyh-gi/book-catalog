@@ -360,7 +360,7 @@
       </div>
       <div class="cloud-hr"></div>
       <div class="cloud-ops">
-        <button class="btn-ghost" id="btnCloudUp">上传到云端（覆盖）</button>
+        <button class="btn-ghost" id="btnCloudUp">同步到云端（与云端合并）</button>
         <button class="btn-ghost" id="btnCloudDown">从云端恢复（覆盖本地）</button>
       </div>
       <p class="note" id="cloudNote"></p>
@@ -1054,10 +1054,48 @@
         })
         .catch(function () { return 0; });
     }
+    /* 云端快照与本机按书合并（多设备安全：并集 + 本机优先 + 删除传播） */
+    function mergeStoreWithCloud(cloud) {
+      var byId = {};
+      (cloud.added || []).forEach(function (b) { byId[b.id] = b; });
+      (store.added || []).forEach(function (b) { byId[b.id] = b; });   // 同 id 本机版本优先
+      var del = {};
+      (cloud.deleted || []).forEach(function (id) { del[id] = 1; });
+      (store.deleted || []).forEach(function (id) { del[id] = 1; });   // 删除记录双向传播
+      var added = Object.keys(byId).map(function (k) { return byId[k]; })
+        .filter(function (b) { return !del[b.id]; });
+      var status = {};
+      Object.keys(cloud.status || {}).forEach(function (k) { status[k] = cloud.status[k]; });
+      Object.keys(store.status || {}).forEach(function (k) { status[k] = store.status[k]; });
+      var gmap = {};
+      Object.keys((cloud.g && cloud.g.map) || {}).forEach(function (k) { gmap[k] = cloud.g.map[k]; });
+      Object.keys((store.g && store.g.map) || {}).forEach(function (k) { gmap[k] = store.g.map[k]; });
+      var glist = (store.g && store.g.list) ? store.g.list : ((cloud.g && cloud.g.list) || null);
+      var cover = {};
+      Object.keys(cloud.cover || {}).forEach(function (k) { cover[k] = cloud.cover[k]; });
+      Object.keys(store.cover || {}).forEach(function (k) { cover[k] = store.cover[k]; });
+      store.added = added;
+      store.deleted = Object.keys(del);
+      store.status = status;
+      store.g = { list: glist, map: gmap };
+      store.cover = cover;
+      saveStore();
+      renderAll();
+    }
     function cloudUpload() {
       var cfg = cloudCfg();
       if (!cfg) { setCloudNote("请先粘贴并保存 GitHub Fine-grained PAT。"); return; }
-      setCloudNote("正在上传…（封面较多时会稍慢）");
+      setCloudNote("正在与云端合并…");
+      fetch(CLOUD_PAGES + CLOUD_DATA + "?t=" + Date.now())
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; })
+        .then(function (cloud) {
+          if (cloud) mergeStoreWithCloud(cloud);   // 先合并：另一台设备录入的书不会被覆盖丢失
+          setCloudNote("正在同步…（封面较多时会稍慢）");
+          doCloudUpload(cfg);
+        });
+    }
+    function doCloudUpload(cfg) {
       var payload = {
         status: store.status, added: store.added, g: store.g, deleted: store.deleted,
         cover: {}, savedAt: new Date().toISOString()
