@@ -14,9 +14,10 @@
 
 | 操作 | 方法 |
 |---|---|
-| **线上使用** | **https://sunyh-gi.github.io/book-catalog/**（GitHub Pages，数据存浏览器 localStorage） |
+| **线上使用** | **https://sunyh-gi.github.io/book-catalog/**（GitHub Pages；新设备首次打开自动加载云端书库） |
 | 本地使用 | 双击 `index.html`（file://，与线上 localStorage 互不相通） |
-| 启用豆瓣在线搜索 | 双击 `_start_douban_server.cmd`（黑窗口保持开启），然后刷新页面 |
+| **云同步（多设备）** | 侧栏「☁ 云同步」→ 粘贴 GitHub Fine-grained PAT（生成步骤见弹层内说明）→「上传到云端」；其他设备刷新即得。恢复/读取不需要 Token |
+| 启用豆瓣在线搜索 | 那台设备需运行 `python _douban_server.py`（需 Python；手机不支持，用「上传封面」替代） |
 | 同步 books.js 到线上 | `node _gh_push.js`（幂等只推变化文件；token 在 `.gh_token`） |
 | 录入新书 | 添加图书 → 输入书名或 ISBN → 搜索豆瓣 → 点候选行的「选择」（自动填充）→ 选题材 → 加入书库（封面自动下载到 `covers/`） |
 | 改已购/未购 | 点卡片**文字区**（点封面是打开详情） |
