@@ -25,6 +25,56 @@ function ok(name, cond, extra) {
   else { fail++; const msg = name + (extra ? ' :: ' + extra : ''); fails.push(msg); console.log('  FAIL ' + msg); }
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* 测试数据集：books.js 已清空（真实书库从零开始），冒烟用 localStorage 注入代替种子 */
+const FIXTURE = {
+  status: {},
+  added: [
+    { id: "b-1001", title: "百年孤独", author: "[哥伦比亚] 加西亚·马尔克斯", translator: "范晔",
+      publisher: "南海出版公司", year: 2011, pubDate: "2011-06", pages: 360, binding: "精装",
+      isbn: "978-7-5442-5399-4", genre: "文学小说", series: "理想国译丛", status: "owned",
+      addedAt: "2026-09-21", doubanUrl: "https://book.douban.com/subject/6082808/", cover: "" },
+    { id: "b-1002", title: "人类简史", subtitle: "从动物到上帝", author: "[以] 尤瓦尔·赫拉利", translator: "林俊宏",
+      publisher: "中信出版社", year: 2014, pubDate: "2014-10", pages: 440, binding: "平装",
+      isbn: "", genre: "历史与人文", series: "新知文库", status: "owned",
+      addedAt: "2026-09-20", doubanUrl: "", cover: "" },
+    { id: "b-1003", title: "活着", author: "余华", translator: "",
+      publisher: "作家出版社", year: 1993, pubDate: "1993-11", pages: 191, binding: "平装",
+      isbn: "", genre: "文学小说", series: "", status: "owned",
+      addedAt: "2026-09-19", doubanUrl: "", cover: "" },
+    { id: "b-1004", title: "万历十五年", author: "[美] 黄仁宇", translator: "",
+      publisher: "生活·读书·新知三联书店", year: 1997, pubDate: "1997-05", pages: 320, binding: "平装",
+      isbn: "", genre: "历史与人文", series: "甲骨文丛书", status: "owned",
+      addedAt: "2026-09-18", doubanUrl: "", cover: "" },
+    { id: "b-1005", title: "挪威的森林", author: "[日] 村上春树", translator: "林少华",
+      publisher: "上海译文出版社", year: 2007, pubDate: "2007-09", pages: 380, binding: "平装",
+      isbn: "", genre: "文学小说", series: "", status: "pending",
+      addedAt: "2026-09-17", doubanUrl: "", cover: "" },
+    { id: "b-1006", title: "三体", author: "刘慈欣", translator: "",
+      publisher: "重庆出版社", year: 2008, pubDate: "2008-01", pages: 302, binding: "平装",
+      isbn: "", genre: "文学小说", series: "", status: "owned",
+      addedAt: "2026-09-16", doubanUrl: "", cover: "" },
+    { id: "b-1007", title: "乡土中国", author: "费孝通", translator: "",
+      publisher: "北京大学出版社", year: 2012, pubDate: "2012-10", pages: 130, binding: "平装",
+      isbn: "", genre: "社会科学", series: "汉译世界学术名著", status: "owned",
+      addedAt: "2026-09-15", doubanUrl: "", cover: "" },
+    { id: "b-1008", title: "美的历程", author: "李泽厚", translator: "",
+      publisher: "生活·读书·新知三联书店", year: 2009, pubDate: "2009-01", pages: 320, binding: "平装",
+      isbn: "", genre: "历史与人文", series: "", status: "pending",
+      addedAt: "2026-09-14", doubanUrl: "", cover: "" },
+    { id: "b-1009", title: "枪炮、病菌与钢铁", subtitle: "人类社会的命运", author: "[美] 贾雷德·戴蒙德", translator: "",
+      publisher: "上海译文出版社", year: 2016, pubDate: "2016-07", pages: 520, binding: "平装",
+      isbn: "", genre: "历史与人文", series: "译文纪实", status: "pending",
+      addedAt: "2026-09-13", doubanUrl: "", cover: "" },
+    { id: "b-1010", title: "置身事内", subtitle: "中国政府与经济发展", author: "兰小欢", translator: "",
+      publisher: "上海人民出版社", year: 2021, pubDate: "2021-08", pages: 320, binding: "平装",
+      isbn: "", genre: "经济管理", series: "", status: "owned",
+      addedAt: "2026-09-12", doubanUrl: "", cover: "" }
+  ],
+  g: { list: null, map: {} },
+  cover: {},
+  deleted: []
+};
 const nav = page => (kind, value) => page.evaluate((k, v) => {
   const btn = [...document.querySelectorAll('#nav .nav-item')]
     .find(b => b.dataset.kind === k && (b.dataset.value || '') === (v || ''));
@@ -46,6 +96,7 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   await page.goto(PAGE_URL, { waitUntil: 'load' });
   await sleep(400);
   await page.evaluate(() => localStorage.removeItem('booklib.v1'));
+  await page.evaluate(d => localStorage.setItem('booklib.v1', JSON.stringify(d)), FIXTURE);
   await page.reload({ waitUntil: 'load' });
   await sleep(400);
   const goto_ = nav(page);
@@ -71,8 +122,9 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   const firstTitle = await page.$eval('.grid .card .c-title', n => n.textContent.trim());
   const expectFirst = await page.evaluate(() => {
     const pk = b => b.pubDate ? String(b.pubDate) : (b.year ? b.year + '-00' : '0000-00');
-    const bs = (window.BOOKS || []).slice().sort((x, y) => pk(y).localeCompare(pk(x)));
-    return bs[0].title;
+    const d = JSON.parse(localStorage.getItem('booklib.v1') || '{}');
+    const bs = (d.added || []).slice().sort((x, y) => pk(y).localeCompare(pk(x)));
+    return bs.length ? bs[0].title : '';
   });
   ok('N1 默认排序按出版日期从新到旧', firstTitle === expectFirst, firstTitle + ' vs ' + expectFirst);
 
@@ -272,6 +324,10 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   const URL_ONLINE = 'file:///' + path.join(ROOT, 'index.html').replace(/\\/g, '/') +
     '?svc=http://127.0.0.1:' + MOCK_PORT;
   await page2.goto(URL_ONLINE, { waitUntil: 'load' });
+  await sleep(400);
+  await page2.evaluate(() => localStorage.removeItem('booklib.v1'));
+  await page2.evaluate(d => localStorage.setItem('booklib.v1', JSON.stringify(d)), FIXTURE);
+  await page2.reload({ waitUntil: 'load' });
   await sleep(1200);
   const hintH = await page2.$eval('#addHint', n => n.textContent.trim());
   ok('H1 探测到豆瓣在线', hintH.indexOf('豆瓣在线') > -1, hintH);
