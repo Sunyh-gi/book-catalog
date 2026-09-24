@@ -89,7 +89,7 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 150px));
     column-gap: 48px; row-gap: 56px; padding-top: 32px; }
   .card { display: flex; flex-direction: column; }
-  .cover { position: relative; aspect-ratio: 169 / 240; border-radius: 6px; background: #E9E9EC;
+  .cover { position: relative; aspect-ratio: 169 / 240; border-radius: 0; background: #E9E9EC;
     overflow: hidden; display: flex; align-items: center; justify-content: center; }
   .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .cover-ph { font-size: 14px; color: var(--label); }
@@ -148,7 +148,7 @@
   .add-results { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
   .add-row { display: flex; align-items: center; gap: 14px; padding: 12px;
     border: 1px solid var(--stroke-soft); border-radius: 8px; }
-  .add-cover { width: 56px; height: 80px; border-radius: 4px; background: #E9E9EC;
+  .add-cover { width: 56px; height: 80px; border-radius: 0; background: #E9E9EC;
     overflow: hidden; display: flex; align-items: center; justify-content: center; flex: 0 0 56px; }
   .add-cover img { width: 100%; height: 100%; object-fit: cover; }
   .cover-ph.small { font-size: 11px; color: var(--label); }
@@ -182,7 +182,7 @@
     background: #fff; border-radius: 12px; padding: 28px;
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }
   .d-row { display: flex; gap: 28px; align-items: center; }
-  .d-cover { width: 200px; height: 284px; flex: 0 0 200px; border-radius: 6px;
+  .d-cover { width: 200px; height: 284px; flex: 0 0 200px; border-radius: 0;
     background: #E9E9EC; overflow: hidden; display: flex; align-items: center; justify-content: center; }
   a.d-cover { cursor: pointer; }
   .d-cover img { width: 100%; height: 100%; object-fit: cover; }
@@ -227,6 +227,9 @@
   .cloud-label { font-size: 11px; color: var(--label); margin-top: 8px; }
   .cloud-hr { border-top: 1px solid var(--stroke-soft); margin: 18px 0 12px; }
   .cloud-ops { display: flex; gap: 10px; flex-wrap: wrap; }
+  .cloud-ops .btn-ghost { color: #6B6B6B; font-weight: 500; }
+  .cloud-ops .btn-ghost:hover:not(:disabled) { background: #ECECED; color: var(--solid); }
+  .cloud-ops .btn-ghost:disabled { opacity: 0.45; cursor: not-allowed; }
 
   @media (max-width: 1240px) {
     .main { padding: 14px 48px 28px; }
@@ -356,11 +359,11 @@
         <button class="btn-add" id="btnCloudSave">保存配置</button>
       </div>
       <div class="cloud-hr"></div>
+      <p class="note" id="cloudNote"></p>
       <div class="cloud-ops">
-        <button class="btn-ghost" id="btnCloudUp">同步到云端（与云端合并）</button>
+        <button class="btn-ghost" id="btnCloudUp">同步到云端（先与云端合并）</button>
         <button class="btn-ghost" id="btnCloudDown">从云端恢复（覆盖本地）</button>
       </div>
-      <p class="note" id="cloudNote"></p>
     </div>
   </div>
 
@@ -983,8 +986,13 @@
       var cfg = cloudCfg();
       document.getElementById("cloudToken").value = cfg ? cfg.token : "";
       document.getElementById("cloudDoubanUrl").value = doubanCloudUrl();
-      setCloudNote(cfg ? "Token 已保存。「上传到云端」覆盖云端数据；「从云端恢复」覆盖本机。读取/恢复不需要 Token。"
-                       : "首次使用：按下方说明生成 Fine-grained PAT 并粘贴保存。恢复云端数据不需要 Token。");
+      var note = document.getElementById("cloudNote");
+      if (cfg) {
+        note.textContent = "已配置。使用顺序：录完书点「同步到云端」→ 换设备打开页面会自动加载云端书库（或点「从云端恢复」）。";
+      } else {
+        note.textContent = "首次使用三步：① 按上方说明生成 Fine-grained PAT 并粘贴 → ② 点「保存配置」→ ③ 点「同步到云端」。恢复云端数据不需要 Token。";
+      }
+      document.getElementById("btnCloudUp").disabled = !cfg;
       document.getElementById("cloudOverlay").hidden = false;
     }
     function closeCloud() { document.getElementById("cloudOverlay").hidden = true; }
@@ -995,7 +1003,8 @@
       if (doubanUrl) localStorage.setItem("booklib.doubancloud", JSON.stringify({ url: doubanUrl }));
       else localStorage.removeItem("booklib.doubancloud");
       updateCloudState();
-      setCloudNote("✅ 配置已保存。" + (doubanUrl ? "豆瓣云端已启用，正在重新探测…" : "豆瓣云端已清除。"));
+      document.getElementById("btnCloudUp").disabled = !cloudCfg();
+      setCloudNote("✅ 配置已保存。" + (token ? "现在可以点「同步到云端」了。" : "") + (doubanUrl ? "豆瓣云端已启用，正在重新探测…" : ""));
       if (doubanUrl) probeDouban();
     }
     function ghHeaders(cfg) {
