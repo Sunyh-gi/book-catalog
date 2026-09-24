@@ -832,10 +832,14 @@
     }
     function probeDouban() {
       var m = location.search.match(/[?&]svc=([^&]+)/);
-      var list = m ? [decodeURIComponent(m[1])] : [];
-      list.push("http://localhost:8765", "http://127.0.0.1:8765");
-      var cu = doubanCloudUrl();
-      if (cu && list.indexOf(cu) === -1) list.push(cu);   // 本机优先，云端兜底
+      var list;
+      if (m) {
+        list = [decodeURIComponent(m[1])];   // 显式指定 svc 时只用它（测试/强制场景）
+      } else {
+        list = ["http://localhost:8765", "http://127.0.0.1:8765"];
+        var cu = doubanCloudUrl();
+        if (cu && list.indexOf(cu) === -1) list.push(cu);   // 本机优先，云端兜底
+      }
       var tryNext = function (i) {
         if (i >= list.length) return;
         var base = list[i];
