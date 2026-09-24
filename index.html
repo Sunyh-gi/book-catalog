@@ -218,7 +218,7 @@
   .nav-label-btn { display: block; width: 100%; text-align: left; border-radius: 4px; }
   .nav-label-btn:hover { color: var(--text); }
 
-  /* ============ 云同步（LeanCloud） ============ */
+  /* ============ 云同步（GitHub 仓库存储） ============ */
   .cloud-row { display: flex; align-items: center; gap: 8px; padding: 10px 16px 8px; }
   .cloud-btn { font-size: 12px; color: #6B6B6B; padding: 3px 8px; border-radius: 5px; }
   .cloud-btn:hover { background: var(--ctrl); color: var(--solid); }
@@ -330,13 +330,13 @@
     </div>
   </div>
 
-  <!-- 云同步弹层（LeanCloud） -->
+  <!-- 云同步弹层（GitHub 仓库存储） -->
   <div class="overlay" id="cloudOverlay" hidden>
     <div class="genre-panel">
       <div class="add-head">
         <div>
-          <h2>云同步 · LeanCloud</h2>
-          <p>多设备共享同一份书库；凭据来自你的 LeanCloud 应用设置页</p>
+          <h2>云同步 · GitHub</h2>
+          <p>多设备共享同一份书库；快照存于 book-catalog 仓库（library.json），上传需 Token，恢复免费</p>
         </div>
         <button class="close-btn" id="btnCloseCloud" title="关闭">×</button>
       </div>
@@ -354,9 +354,6 @@
       </div>
       <div class="form-actions">
         <button class="btn-add" id="btnCloudSave">保存配置</button>
-      </div>
-      <div class="form-actions">
-        <button class="btn-add" id="btnCloudSave">保存 Token</button>
       </div>
       <div class="cloud-hr"></div>
       <div class="cloud-ops">
