@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>藏书阁 · 图书管理平台</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #3F3F3F;      /* 主文字 */
+    --text: #6B6B6B;     /* 次要文字 */
+    --assist: #8B8B8B;   /* 辅助文字 */
+    --label: #A6A6A6;    /* 分组标签 */
+    --foot: #B4B4B4;     /* 页脚 */
+    --line: #ECECEC;     /* 分隔线 */
+    --ctrl: #F5F5F6;     /* 控件底 */
+    --sel: #F1F1F2;      /* 选中态底 */
+    --solid: #4F4F4F;    /* 实心块 / 按钮 / 导航图标 */
+    --stroke-soft: #E8E8E8;
+  }
+  html, body { height: 100%; }
+  body {
+    display: flex; background: #fff; color: var(--ink); font-size: 13px;
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  [hidden] { display: none !important; }
+  button { font-family: inherit; border: none; background: none; cursor: pointer; color: inherit; }
+  input, select { font-family: inherit; }
+  svg { display: block; }
+
+  /* ============ 侧栏 ============ */
+  .sidebar { width: 320px; flex: 0 0 320px; border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; min-height: 100vh; }
+  .brand { height: 88px; display: flex; align-items: center; gap: 10px; padding: 0 20px;
+    border-bottom: 1px solid var(--line); flex: 0 0 auto; }
+  .brand-logo { width: 32px; height: 32px; border-radius: 8px; background: var(--solid);
+    display: flex; align-items: center; justify-content: center; flex: 0 0 32px; }
+  .brand-name { font-size: 16px; font-weight: 500; color: var(--ink); }
+  .nav { flex: 1; padding: 6px 12px 16px; overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: #E0E0E0 transparent; }
+  .nav::-webkit-scrollbar { width: 6px; }
+  .nav::-webkit-scrollbar-track { background: transparent; }
+  .nav::-webkit-scrollbar-thumb { background: #E4E4E4; border-radius: 3px; }
+  .nav::-webkit-scrollbar-thumb:hover { background: #D6D6D6; }
+  .nav-label { font-size: 11px; color: var(--label); padding: 14px 10px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 9px; width: 100%; height: 34px;
+    padding: 0 10px; border-radius: 6px; color: var(--text); font-size: 13px; text-align: left; }
+  .nav-item + .nav-item { margin-top: 2px; }
+  .nav-item .nav-icon { width: 16px; height: 16px; flex: 0 0 16px; }
+  .nav-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-count { font-size: 12px; color: var(--label); }
+  .nav-item:hover { background: #FAFAFB; }
+  .nav-item.active { background: var(--sel); color: var(--ink); }
+  .nav-item.active .nav-count { color: var(--ink); }
+  .sidebar-foot { height: 44px; border-top: 1px solid var(--line); display: flex;
+    align-items: center; justify-content: space-between; padding: 0 20px;
+    font-size: 11px; color: var(--foot); flex: 0 0 auto; }
+
+  /* ============ 主区 ============ */
+  .main { flex: 1; min-width: 0; padding: 14px 88px 28px; }
+  .content { max-width: 942px; margin: 0 auto; }
+  .topbar { height: 88px; display: flex; align-items: center; justify-content: space-between; }
+  .topbar h1 { font-size: 20px; font-weight: 500; color: var(--ink); line-height: 28px; }
+  .page-meta { margin-top: 5px; font-size: 12px; line-height: 17px; color: var(--assist); }
+  .topbar-actions { display: flex; align-items: center; gap: 10px; }
+  .searchbox { width: 300px; height: 38px; background: var(--ctrl); border-radius: 6px;
+    display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+  .searchbox svg { flex: 0 0 15px; }
+  .searchbox input { flex: 1; border: none; background: none; outline: none;
+    font-size: 13px; color: var(--ink); }
+  .searchbox input::placeholder { color: var(--label); }
+  .btn-solid { height: 38px; padding: 0 14px; background: var(--solid); color: #fff;
+    border-radius: 6px; font-size: 13px; font-weight: 500;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .btn-solid:hover { background: #454545; }
+  .btn-solid .plus { font-size: 15px; line-height: 1; margin-top: -1px; }
+
+  .filterrow { margin-top: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .sortwrap select {
+    height: 36px; padding: 0 30px 0 12px; border: none; outline: none; border-radius: 6px;
+    background-color: var(--ctrl); color: var(--text); font-size: 13px; cursor: pointer;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.7l3 3 3-3' fill='none' stroke='%235E5E5E' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+
+  /* ============ 书卡网格 ============ */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 150px));
+    column-gap: 48px; row-gap: 56px; padding-top: 32px; }
+  .card { display: flex; flex-direction: column; }
+  .cover { position: relative; aspect-ratio: 169 / 240; border-radius: 6px; background: #E9E9EC;
+    overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cover-ph { font-size: 14px; color: var(--label); }
+  .dot-owned { position: absolute; top: 10px; left: 10px; width: 6px; height: 6px;
+    border-radius: 3px; background: var(--solid); }
+  .info { margin-top: 10px; cursor: pointer; }
+  .c-title { font-size: 14px; line-height: 21px; font-weight: 500; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; }
+  .c-author { margin-top: 5px; font-size: 12px; line-height: 17px; color: var(--assist);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .info:hover .c-title { color: #2C2C2C; }
+  .empty-tip { padding: 64px 0 32px; text-align: center; font-size: 12px; color: var(--label); }
+  .error-tip { padding: 64px 0 32px; text-align: center; font-size: 13px; color: var(--assist); line-height: 24px; }
+
+  /* ============ 弹层 ============ */
+  .overlay { position: fixed; inset: 0; background: rgba(28, 28, 28, 0.42);
+    display: flex; align-items: center; justify-content: center; z-index: 50; padding: 24px; }
+  .panel-label { font-size: 11px; color: var(--label); }
+  .panel-hint { margin-top: 14px; text-align: center; font-size: 11px; color: var(--label); }
+
+  .status-panel { width: 352px; background: #fff; border-radius: 12px; padding: 22px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22); }
+  .status-panel h2 { margin-top: 8px; font-size: 15px; font-weight: 500; color: var(--ink); }
+  .status-options { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .status-opt { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 14px;
+    border-radius: 8px; background: #fff; border: 1px solid var(--stroke-soft);
+    font-size: 13px; color: #5E5E5E; text-align: left; }
+  .status-opt .dot { width: 6px; height: 6px; border-radius: 3px; flex: 0 0 6px;
+    border: 1px solid #D2D2D2; background: #fff; }
+  .status-opt:hover { border-color: #CFCFCF; }
+  .status-opt.selected { background: var(--sel); border-color: var(--solid);
+    color: var(--solid); font-weight: 500; }
+  .status-opt.selected .dot { background: var(--solid); border-color: var(--solid); }
+
+  .add-panel { width: 800px; max-width: 100%; max-height: 84vh; overflow: auto;
+    background: #fff; border-radius: 12px; padding: 28px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }
+  .add-head { display: flex; align-items: flex-start; justify-content: space-between; }
+  .add-head h2 { font-size: 18px; font-weight: 500; color: var(--ink); line-height: 26px; }
+  .add-head p { margin-top: 6px; font-size: 12px; color: var(--assist); }
+  .close-btn { width: 28px; height: 28px; border-radius: 6px; font-size: 16px;
+    color: var(--assist); line-height: 1; }
+  .close-btn:hover { background: var(--ctrl); }
+  .search-row { margin-top: 20px; display: flex; gap: 10px; }
+  .f-input { height: 40px; border: none; outline: none; background: var(--ctrl);
+    border-radius: 6px; padding: 0 12px; font-size: 13px; color: var(--ink); }
+  .f-input::placeholder { color: var(--label); }
+  #addTitle { flex: 1; min-width: 0; }
+  #addIsbn { width: 236px; flex: 0 0 auto; }
+  .btn-search { height: 40px; padding: 0 18px; border-radius: 6px; background: var(--solid);
+    color: #fff; font-size: 13px; font-weight: 500; flex: 0 0 auto; }
+  .btn-search:hover { background: #454545; }
+  .hairline { height: 1px; background: #EDEDED; margin: 20px 0; }
+  .result-head { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--assist); }
+  .result-head .muted { color: var(--label); }
+  .add-results { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+  .add-row { display: flex; align-items: center; gap: 14px; padding: 12px;
+    border: 1px solid var(--stroke-soft); border-radius: 8px; }
+  .add-cover { width: 56px; height: 80px; border-radius: 4px; background: #E9E9EC;
+    overflow: hidden; display: flex; align-items: center; justify-content: center; flex: 0 0 56px; }
+  .add-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .cover-ph.small { font-size: 11px; color: var(--label); }
+  .add-info { flex: 1; min-width: 0; }
+  .add-info h4 { font-size: 14px; font-weight: 500; color: var(--ink); line-height: 21px; }
+  .add-info p { margin-top: 4px; font-size: 12px; color: #5E5E5E; }
+  .add-info .pub { color: var(--label); font-size: 11px; }
+  .btn-ghost { height: 30px; padding: 0 14px; border-radius: 6px; background: var(--ctrl);
+    color: var(--label); font-size: 12px; flex: 0 0 auto; }
+  .add-empty { font-size: 12px; color: var(--assist); padding: 12px 0 2px; line-height: 20px; }
+  .db-label { margin-top: 14px; font-size: 11px; color: var(--label); }
+  .db-row .add-cover.noimg { background: #F2F2F3; }
+  .db-sub { margin-left: 8px; font-size: 11px; color: var(--assist); font-weight: 400; }
+  .db-more { font-size: 11px; color: var(--label); }
+  .db-pick { color: #6B6B6B; font-weight: 500; }
+  .db-pick:hover:not(:disabled) { background: #ECECED; color: var(--solid); }
+  .db-pick.picked { background: var(--sel); color: var(--solid); border-color: var(--solid); font-weight: 500; }
+
+  .manual { margin-top: 18px; }
+  .manual h3 { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .manual .note { margin-top: 4px; font-size: 11px; color: var(--label); }
+  .form-grid { margin-top: 12px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; }
+  .form-grid .f-input, .form-grid select.f-input { height: 36px; width: 100%; }
+  .form-actions { margin-top: 12px; display: flex; justify-content: flex-end; }
+  .btn-add { height: 36px; padding: 0 16px; border-radius: 6px; background: var(--solid);
+    color: #fff; font-size: 13px; font-weight: 500; }
+  .btn-add:hover { background: #454545; }
+
+  /* ============ 图书详情弹层 ============ */
+  .detail-panel { width: 680px; max-width: 100%; max-height: 86vh; overflow: auto;
+    background: #fff; border-radius: 12px; padding: 28px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }
+  .d-row { display: flex; gap: 28px; align-items: center; }
+  .d-cover { width: 200px; height: 284px; flex: 0 0 200px; border-radius: 6px;
+    background: #E9E9EC; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  a.d-cover { cursor: pointer; }
+  .d-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .d-info { flex: 1; min-width: 0; }
+  .d-info h2 { font-size: 20px; font-weight: 500; color: var(--ink); line-height: 28px; }
+  .d-sub { margin-top: 4px; font-size: 13px; line-height: 20px; color: var(--assist); }
+  .d-hairline { height: 1px; background: var(--line); margin: 14px 0; }
+  .d-meta { display: flex; flex-direction: column; gap: 10px; }
+  .d-meta .m-row { display: flex; gap: 12px; }
+  .d-meta .m-label { flex: 0 0 56px; font-size: 12px; line-height: 20px; color: var(--assist); }
+  .d-meta .m-value { flex: 1; font-size: 13px; line-height: 20px; color: var(--ink); word-break: break-all; }
+  .d-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .d-head h2 { flex: 1; min-width: 0; }
+  .d-acts { display: flex; gap: 14px; flex: 0 0 auto; }
+  .d-linkish { font-size: 12px; line-height: 20px; color: var(--assist); }
+  .d-linkish:hover { text-decoration: underline; }
+  .d-linkish.confirm { font-weight: 500; text-decoration: underline; }
+
+  /* ============ 题材管理弹层 ============ */
+  .genre-panel { width: 420px; max-width: 100%; max-height: 80vh; overflow: auto;
+    background: #fff; border-radius: 12px; padding: 28px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }
+  .genre-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .genre-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    border: 1px solid var(--stroke-soft); border-radius: 8px; }
+  .g-name { flex: 1; min-width: 0; font-size: 13px; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .g-count { font-size: 11px; color: var(--label); flex: 0 0 auto; }
+  .g-act { font-size: 12px; color: #6B6B6B; padding: 3px 8px; border-radius: 5px; flex: 0 0 auto; }
+  .g-act:hover { background: var(--ctrl); color: var(--solid); }
+  .g-act.confirm { font-weight: 500; text-decoration: underline; color: var(--solid); }
+  .g-rename { height: 30px; flex: 1; min-width: 0; }
+  .nav-label-btn { display: block; width: 100%; text-align: left; border-radius: 4px; }
+  .nav-label-btn:hover { color: var(--text); }
+
+  @media (max-width: 1240px) {
+    .main { padding: 14px 48px 28px; }
+    .searchbox { width: 220px; }
+  }
+</style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-logo">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <rect x="3" y="2.5" width="9.5" height="13" rx="1.6" fill="#fff"/>
+          <path d="M12.5 2.5h1.2A1.3 1.3 0 0 1 15 3.8v10.4a1.3 1.3 0 0 1-1.3 1.3H12.5z" fill="#fff" opacity=".55"/>
+          <path d="M5.4 5.8h4.6M5.4 8.4h4.6" stroke="#4F4F4F" stroke-width="1.1" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="brand-name">藏书阁</span>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sidebar-foot">
+      <span id="footUpdated"></span>
+      <span id="footVersion"></span>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="content">
+      <header class="topbar">
+        <div class="topbar-text">
+          <h1 id="pageTitle">全部藏书</h1>
+          <p class="page-meta" id="pageMeta"></p>
+        </div>
+        <div class="topbar-actions">
+          <div class="searchbox">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+              <circle cx="6.4" cy="6.4" r="4.1" stroke="#8B8B8B" stroke-width="1.3"/>
+              <path d="M9.6 9.6l3 3" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <input id="searchInput" type="text" placeholder="搜索书名 / 作者 / ISBN" autocomplete="off">
+          </div>
+        </div>
+      </header>
+
+      <div class="filterrow">
+        <button class="btn-solid" id="btnAdd"><span class="plus">+</span>添加图书</button>
+        <div class="sortwrap">
+          <select id="sortSel" title="排序">
+            <option value="pubDate">按出版日期（新→旧）</option>
+            <option value="added">最近添加</option>
+            <option value="title">按书名</option>
+            <option value="author">按作者</option>
+            <option value="year">按出版年份</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid" id="grid"></div>
+      <p class="empty-tip" id="emptyTip" hidden>没有符合条件的图书</p>
+    </div>
+  </div>
+
+  <!-- 标记状态弹层 -->
+  <div class="overlay" id="statusOverlay" hidden>
+    <div class="status-panel">
+      <p class="panel-label">标记状态</p>
+      <h2 id="statusBookTitle"></h2>
+      <div class="status-options">
+        <button class="status-opt" data-status="owned"><span class="dot"></span>已购</button>
+        <button class="status-opt" data-status="pending"><span class="dot"></span>未购</button>
+      </div>
+      <p class="panel-hint">点击空白处或按 Esc 取消</p>
+    </div>
+  </div>
+
+  <!-- 图书详情弹层 -->
+  <div class="overlay" id="detailOverlay" hidden>
+    <div class="detail-panel" id="detailPanel"></div>
+  </div>
+
+  <!-- 题材管理弹层 -->
+  <div class="overlay" id="genreOverlay" hidden>
+    <div class="genre-panel">
+      <div class="add-head">
+        <div>
+          <h2>题材管理</h2>
+          <p>添加、重命名或删除图书题材；删除题材不会删除图书</p>
+        </div>
+        <button class="close-btn" id="btnCloseGenre" title="关闭">×</button>
+      </div>
+      <div class="genre-list" id="genreList"></div>
+      <div class="search-row">
+        <input class="f-input" id="gNew" type="text" placeholder="新题材名称" autocomplete="off">
+        <button class="btn-search" id="btnGenreAdd">添加题材</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 添加图书弹层 -->
+  <div class="overlay" id="addOverlay" hidden>
+    <div class="add-panel">
+      <div class="add-head">
+        <div>
+          <h2>添加图书</h2>
+          <p id="addHint">输入书名或 ISBN，在线匹配豆瓣候选版本后自动填充；未启动本地服务时仅查重本地书库</p>
+        </div>
+        <button class="close-btn" id="btnCloseAdd" title="关闭">×</button>
+      </div>
+
+      <div class="search-row">
+        <input class="f-input" id="addTitle" type="text" placeholder="书名" autocomplete="off">
+        <input class="f-input" id="addIsbn" type="text" placeholder="ISBN，如 978-7-5442-5399-4" autocomplete="off">
+        <button class="btn-search" id="btnSearchDouban">搜索豆瓣</button>
+      </div>
+
+      <div class="hairline"></div>
+
+      <div class="result-head" id="addResultHead">
+        <span>本地书库</span><span class="muted">按相关度排序</span>
+      </div>
+      <div class="add-results" id="addResults"></div>
+
+      <div class="manual">
+        <h3>手动录入</h3>
+        <p class="note" id="manualNote">选中豆瓣版本后自动填充以下字段；题材请手动选择</p>
+        <div class="form-grid">
+          <input class="f-input" id="mTitle" type="text" placeholder="书名（必填）">
+          <select class="f-input" id="mGenre">
+            <option>文学小说</option>
+            <option>历史与人文</option>
+            <option>社会科学</option>
+            <option>科技与工程</option>
+            <option>经济管理</option>
+          </select>
+          <input class="f-input" id="mAuthor" type="text" placeholder="作者，如 [日] 村上春树">
+          <input class="f-input" id="mSeries" type="text" placeholder="丛书（可留空）">
+          <input class="f-input" id="mYear" type="text" inputmode="numeric" placeholder="出版年份，如 2021">
+          <input class="f-input" id="mIsbn" type="text" placeholder="ISBN（可留空）">
+        </div>
+        <div class="form-actions">
+          <button class="btn-add" id="btnManualAdd">加入书库</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="data/books.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    var GENRES = ["文学小说", "历史与人文", "社会科学", "科技与工程", "经济管理"];
+    var STATUS_TEXT = { owned: "已购", pending: "未购" };
+    var LS_KEY = "booklib.v1";
+
+    var state = { view: { kind: "all", value: "" }, q: "", sort: "pubDate" };
+    var statusTargetId = null;
+    /* 豆瓣本地代理（_douban_server.py）；页面启动时探测，可用 ?svc= 覆盖地址 */
+    var DOUBAN_SVC = (function () {
+      var m = location.search.match(/[?&]svc=([^&]+)/);
+      return m ? decodeURIComponent(m[1]) : "http://127.0.0.1:8765";
+    })();
+    var doubanOnline = false;
+    var selectedDouban = null;
+
+    /* ---------- 数据层 ---------- */
+    function loadStore() {
+      try {
+        var raw = localStorage.getItem(LS_KEY);
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          return {
+            status: parsed.status || {},
+            added: parsed.added || [],
+            g: { list: (parsed.g && parsed.g.list !== undefined) ? parsed.g.list : null,
+                 map: (parsed.g && parsed.g.map) || {} },
+            cover: parsed.cover || {},
+            deleted: parsed.deleted || []
+          };
+        }
+      } catch (e) {}
+      return { status: {}, added: [], g: { list: null, map: {} }, cover: {}, deleted: [] };
+    }
+    var store = loadStore();
+    function saveStore() {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(store)); } catch (e) {}
+    }
+    function allBooks() {
+      var del = store.deleted || [];
+      return (window.BOOKS || []).concat(store.added || []).filter(function (b) {
+        return del.indexOf(b.id) === -1;
+      });
+    }
+    function statusOf(b) { return store.status[b.id] || b.status || "pending"; }
+    /* 题材：字典（localStorage 可增删改）∪ 书中实际出现的 genre */
+    function allGenres() {
+      return store.g.list !== null ? store.g.list : GENRES.slice();
+    }
+    function genreOf(b) {
+      return store.g.map[b.id] !== undefined ? store.g.map[b.id] : (b.genre || "");
+    }
+    /* 封面：localStorage 覆盖层优先（豆瓣导入/补封面写入），books.js 静态值兜底 */
+    function coverOf(b) {
+      return (store.cover && store.cover[b.id]) || b.cover || "";
+    }
+    function findBook(id) {
+      var list = allBooks();
+      for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+      return null;
+    }
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    /* ---------- 过滤与排序 ---------- */
+    function currentList() {
+      var v = state.view, q = state.q.trim().toLowerCase();
+      var list = allBooks().filter(function (b) {
+        var st = statusOf(b);
+        if (v.kind === "status" && st !== v.value) return false;
+        if (v.kind === "genre" && genreOf(b) !== v.value) return false;
+        if (v.kind === "author" && (b.author || "") !== v.value) return false;
+        if (v.kind === "series" && (b.series || "") !== v.value) return false;
+        if (q) {
+          var hay = [b.title, b.author, b.translator, b.isbn, b.publisher]
+            .map(function (x) { return x || ""; }).join(" ").toLowerCase();
+          if (hay.indexOf(q) === -1) return false;
+        }
+        return true;
+      });
+      /* 出版日期键：pubDate("YYYY-MM") 优先，仅有年份补 "-00"，都缺失垫底 */
+      function pubKey(b) {
+        if (b.pubDate) return String(b.pubDate);
+        if (b.year) return String(b.year) + "-00";
+        return "0000-00";
+      }
+      var cmp = {
+        pubDate: function (a, b) { return pubKey(b).localeCompare(pubKey(a)); },
+        added: function (a, b) { return String(b.addedAt || "").localeCompare(String(a.addedAt || "")); },
+        title: function (a, b) { return String(a.title).localeCompare(String(b.title), "zh-Hans-CN"); },
+        author: function (a, b) { return String(a.author || "").localeCompare(String(b.author || ""), "zh-Hans-CN"); },
+        year: function (a, b) { return (b.year || 0) - (a.year || 0); }
+      }[state.sort];
+      return list.sort(cmp);
+    }
+
+    function counts() {
+      var books = allBooks(), owned = 0;
+      books.forEach(function (b) { if (statusOf(b) === "owned") owned++; });
+      return { all: books.length, owned: owned, pending: books.length - owned };
+    }
+    function countBy(key) {
+      var m = {};
+      allBooks().forEach(function (b) {
+        var v = String(b[key] || "").trim();
+        if (v) m[v] = (m[v] || 0) + 1;
+      });
+      return m;
+    }
+    function viewTitle() {
+      var v = state.view;
+      if (v.kind === "all") return "全部藏书";
+      if (v.kind === "status") return STATUS_TEXT[v.value];
+      return v.value;
+    }
+
+    /* ---------- 渲染：侧栏 ---------- */
+    var ICONS = {
+      all: '<svg class="nav-icon" viewBox="0 0 16 16">' +
+        '<rect x="2" y="2" width="5.07" height="5.07" rx="1" fill="#4F4F4F"/>' +
+        '<rect x="8.93" y="2" width="5.07" height="5.07" rx="1" fill="#4F4F4F"/>' +
+        '<rect x="2" y="8.93" width="5.07" height="5.07" rx="1" fill="#4F4F4F"/>' +
+        '<rect x="8.93" y="8.93" width="5.07" height="5.07" rx="1" fill="#4F4F4F"/></svg>',
+      owned: '<svg class="nav-icon" viewBox="0 0 16 16" fill="none">' +
+        '<circle cx="8" cy="8" r="5.6" stroke="#4F4F4F" stroke-width="1.3"/>' +
+        '<path d="M5.7 8.2l1.7 1.7 3-3.4" stroke="#4F4F4F" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      pending: '<svg class="nav-icon" viewBox="0 0 16 16" fill="none">' +
+        '<circle cx="8" cy="8" r="5.6" stroke="#4F4F4F" stroke-width="1.3"/></svg>'
+    };
+
+    function navItem(kind, value, label, count, icon) {
+      var active = state.view.kind === kind && state.view.value === value;
+      return '<button class="nav-item' + (active ? " active" : "") + '" data-kind="' + kind +
+        '" data-value="' + esc(value) + '">' + (icon || "") +
+        '<span class="nav-text">' + esc(label) + '</span>' +
+        '<span class="nav-count">' + count + '</span></button>';
+    }
+
+    function renderSidebar() {
+      var c = counts();
+      var am = countBy("author"), sm = countBy("series");
+      /* 题材计数按 genreOf（含 localStorage 覆盖层）统计 */
+      var gm = {};
+      allBooks().forEach(function (b) {
+        var v = genreOf(b);
+        if (v) gm[v] = (gm[v] || 0) + 1;
+      });
+      var authors = Object.keys(am).sort(function (a, b) {
+        return am[b] - am[a] || a.localeCompare(b, "zh-Hans-CN");
+      });
+      var series = Object.keys(sm).sort(function (a, b) {
+        return sm[b] - sm[a] || a.localeCompare(b, "zh-Hans-CN");
+      });
+      /* 题材列表 = 字典 ∪ 书中实际出现的 genre（删字典项后书仍可从侧栏访问） */
+      var gset = [];
+      allGenres().forEach(function (g) { if (gset.indexOf(g) === -1) gset.push(g); });
+      Object.keys(gm).forEach(function (g) { if (gset.indexOf(g) === -1) gset.push(g); });
+      var h = '<div class="nav-group"><div class="nav-label">书目总览</div>' +
+        navItem("all", "", "全部", c.all, ICONS.all) +
+        navItem("status", "owned", "已购", c.owned, ICONS.owned) +
+        navItem("status", "pending", "未购", c.pending, ICONS.pending) +
+        '</div><div class="nav-group"><button class="nav-label nav-label-btn" id="genreManageBtn" title="点击管理题材">题材</button>';
+      gset.forEach(function (g) { h += navItem("genre", g, g, gm[g] || 0); });
+      h += '</div><div class="nav-group"><div class="nav-label">作者</div>';
+      authors.forEach(function (a) { h += navItem("author", a, a, am[a]); });
+      h += '</div>';
+      if (series.length) {
+        h += '<div class="nav-group"><div class="nav-label">丛书</div>';
+        series.forEach(function (s) { h += navItem("series", s, s, sm[s]); });
+        h += '</div>';
+      }
+      document.getElementById("nav").innerHTML = h;
+    }
+
+    /* ---------- 渲染：页头 / 筛选行 / 网格 ---------- */
+    function renderHeader() {
+      document.getElementById("pageTitle").textContent = viewTitle();
+      var c = counts(), n = currentList().length;
+      var meta;
+      if (state.view.kind === "all" && !state.q.trim()) {
+        meta = "共 " + c.all + " 册 · 已购 " + c.owned + " 册 · 未购 " + c.pending + " 册";
+      } else {
+        meta = "共 " + n + " 册";
+      }
+      document.getElementById("pageMeta").textContent = meta;
+    }
+
+    function cardHTML(b) {
+      var st = statusOf(b);
+      var cover = coverOf(b)
+        ? '<img src="' + esc(coverOf(b)) + '" alt="' + esc(b.title) + '">'
+        : '<span class="cover-ph">封面</span>';
+      return '<article class="card" data-id="' + esc(b.id) + '">' +
+        '<div class="cover">' + cover +
+        (st === "owned" ? '<span class="dot-owned" title="已购"></span>' : '') + '</div>' +
+        '<div class="info" data-id="' + esc(b.id) + '" title="点击修改标记">' +
+        '<h3 class="c-title">' + esc(b.title) + '</h3>' +
+        '<p class="c-author">' + esc(b.author) + '</p>' +
+        '</div></article>';
+    }
+    function renderGrid() {
+      var list = currentList();
+      var grid = document.getElementById("grid");
+      document.getElementById("emptyTip").hidden = list.length > 0;
+      if (!window.BOOKS && !(store.added || []).length) {
+        grid.innerHTML = '<p class="error-tip">未找到数据文件 data/books.js<br>请保持 index.html 与 data 目录的相对位置不变</p>';
+        document.getElementById("emptyTip").hidden = true;
+        return;
+      }
+      grid.innerHTML = list.map(cardHTML).join("");
+    }
+
+    function renderAll() { renderSidebar(); renderHeader(); renderGrid(); }
+
+    /* ---------- 标记状态弹层 ---------- */
+    function openStatus(id) {
+      var b = findBook(id);
+      if (!b) return;
+      statusTargetId = id;
+      document.getElementById("statusBookTitle").textContent = b.title;
+      var st = statusOf(b);
+      document.querySelectorAll("#statusOverlay .status-opt").forEach(function (btn) {
+        btn.classList.toggle("selected", btn.dataset.status === st);
+      });
+      document.getElementById("statusOverlay").hidden = false;
+    }
+    function closeStatus() {
+      document.getElementById("statusOverlay").hidden = true;
+      statusTargetId = null;
+    }
+
+    /* ---------- 添加图书弹层 ---------- */
+    function openAdd() {
+      selectedDouban = null;
+      renderGenreOptions();
+      document.getElementById("addTitle").value = state.q.trim();
+      document.getElementById("addIsbn").value = "";
+      document.getElementById("addResultHead").innerHTML =
+        '<span>本地书库</span><span class="muted">按相关度排序</span>';
+      document.getElementById("addResults").innerHTML =
+        '<p class="add-empty">输入书名或 ISBN 查重本地书库' +
+        (doubanOnline ? '；点「搜索豆瓣」匹配候选版本。' : '；豆瓣离线（未启动 _douban_server.py），可直接在下方手动录入。') + '</p>';
+      var note = document.getElementById("manualNote");
+      if (note) note.textContent = "选中豆瓣版本后自动填充以下字段；题材请手动选择";
+      document.getElementById("addOverlay").hidden = false;
+      document.getElementById("addTitle").focus();
+    }
+    function closeAdd() { document.getElementById("addOverlay").hidden = true; }
+
+    function addRowHTML(b) {
+      var cover = coverOf(b)
+        ? '<img src="' + esc(coverOf(b)) + '" alt="">'
+        : '<span class="cover-ph small">封面</span>';
+      var pub = [b.publisher || "", b.year || "", b.isbn ? "ISBN " + b.isbn : ""]
+        .filter(function (x) { return x; }).join(" · ");
+      return '<div class="add-row">' +
+        '<div class="add-cover">' + cover + '</div>' +
+        '<div class="add-info"><h4>' + esc(b.title) + '</h4>' +
+        '<p>' + esc(b.author) + (b.translator ? " / " + esc(b.translator) + " 译" : "") + '</p>' +
+        '<p class="pub">' + esc(pub) + '</p></div>' +
+        '<button class="btn-ghost" disabled>已入库</button></div>';
+    }
+    function searchDouban() {
+      var t = document.getElementById("addTitle").value.trim();
+      var isbn = document.getElementById("addIsbn").value.trim().replace(/[- ]/g, "");
+      if (!t && !isbn) {
+        document.getElementById("addResults").innerHTML =
+          '<p class="add-empty">请先输入书名或 ISBN。</p>';
+        return;
+      }
+      // 1) 本地查重
+      var tl = t.toLowerCase();
+      var hits = allBooks().filter(function (b) {
+        if (isbn && String(b.isbn || "").replace(/[- ]/g, "") === isbn) return true;
+        if (t && String(b.title || "").toLowerCase().indexOf(tl) > -1) return true;
+        return false;
+      });
+      var head = '<span>本地书库 · 匹配到 ' + hits.length + ' 个版本</span>';
+      var html = hits.length ? hits.map(addRowHTML).join("") : "";
+      var mode = isbn ? "按 ISBN 精确匹配" : "按书名模糊匹配";
+      if (!doubanOnline) {
+        document.getElementById("addResultHead").innerHTML = head +
+          '<span class="muted">' + mode + ' · 豆瓣离线</span>';
+        document.getElementById("addResults").innerHTML = html +
+          '<p class="add-empty">' + (hits.length
+            ? '以上为本地已有版本（避免重复入库）。'
+            : '本地书库无匹配，可直接在下方手动录入；启动 _douban_server.py 后可在线匹配豆瓣版本。') + '</p>';
+        return;
+      }
+      // 2) 豆瓣候选（防连点：请求期间禁用按钮）
+      var btn = document.getElementById("btnSearchDouban");
+      if (btn.disabled) return;
+      btn.disabled = true;
+      var btnReset = function () { btn.disabled = false; btn.textContent = "搜索豆瓣"; };
+      head += '<span class="muted">' + mode + ' · 豆瓣候选加载中…</span>';
+      document.getElementById("addResultHead").innerHTML = head;
+      document.getElementById("addResults").innerHTML = html +
+        '<p class="add-empty">正在查询豆瓣…</p>';
+      fetch(DOUBAN_SVC + "/search?q=" + encodeURIComponent(t || isbn), { mode: "cors" })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          btnReset();
+          if (!j || j.error) throw new Error((j && j.error) || "无响应");
+          var list = j.candidates || [];
+          if (!list.length) {
+            document.getElementById("addResultHead").innerHTML =
+              '<span>本地书库 · ' + hits.length + ' 个版本</span><span class="muted">豆瓣无候选</span>';
+            document.getElementById("addResults").innerHTML = html +
+              '<p class="add-empty">豆瓣未找到候选版本，可直接在下方手动录入。</p>';
+            return;
+          }
+          document.getElementById("addResultHead").innerHTML =
+            '<span>本地书库 · ' + hits.length + ' 个版本 · 豆瓣候选 ' + list.length + ' 个</span>' +
+            '<span class="muted">点「选择」自动填充下方表单</span>';
+          document.getElementById("addResults").innerHTML = html +
+            '<div class="db-label">豆瓣候选版本</div>' + list.map(dbRowHTML).join("");
+          // 并行预取各候选详情，补全副标题 / 出版社 / ISBN 显示
+          list.forEach(function (c) {
+            var sid = c.id;
+            fetch(DOUBAN_SVC + "/fetch?id=" + encodeURIComponent(sid), { mode: "cors" })
+              .then(function (r) { return r.json(); })
+              .then(function (d) {
+                if (!d || d.error) return;
+                var row = document.querySelector('#addResults .db-row[data-sid="' + sid + '"]');
+                if (!row) return;
+                var more = row.querySelector(".db-more");
+                if (more) {
+                  var parts = [d.subtitle || "", d.publisher || "", d.isbn || ""]
+                    .filter(function (x) { return x; });
+                  more.textContent = parts.length ? parts.join(" · ") : "";
+                }
+              })
+              .catch(function () {});
+          });
+        })
+        .catch(function (e) {
+          btnReset();
+          document.getElementById("addResultHead").innerHTML =
+            '<span>本地书库 · ' + hits.length + ' 个版本</span><span class="muted">豆瓣查询失败</span>';
+          document.getElementById("addResults").innerHTML = html +
+            '<p class="add-empty">豆瓣查询失败：' + esc(e.message || e) + '，可直接在下方手动录入。</p>';
+        });
+    }
+    function dbRowHTML(c) {
+      var title = String(c.title || "");
+      var sub = "";
+      var ci = title.indexOf("：");
+      if (ci < 0) ci = title.indexOf(":");
+      if (ci > -1) { sub = title.slice(ci + 1).trim(); title = title.slice(0, ci).trim(); }
+      var coverSrc = DOUBAN_SVC + "/cover?id=" + encodeURIComponent(String(c.id || ""));
+      var cover = '<img src="' + esc(coverSrc) + '" alt="" ' +
+        'onerror="this.parentNode.classList.add(\'noimg\'); this.remove();">';
+      var meta = [c.author_name || "", c.year || ""].filter(function (x) { return x; }).join(" · ");
+      return '<div class="add-row db-row" data-sid="' + esc(c.id) + '">' +
+        '<div class="add-cover">' + cover + '</div>' +
+        '<div class="add-info"><h4>' + esc(title) +
+        (sub ? '<span class="db-sub">' + esc(sub) + '</span>' : '') + '</h4>' +
+        '<p>' + esc(meta) + '</p>' +
+        '<p class="db-more">加载版本信息…</p></div>' +
+        '<button class="btn-ghost db-pick">选择</button></div>';
+    }
+    function fillForm(d) {
+      function set(id, v) { var el = document.getElementById(id); if (el) el.value = (v == null ? "" : v); }
+      set("mTitle", d.title);
+      set("mAuthor", d.author || "");
+      set("mYear", d.year || "");
+      set("mIsbn", d.isbn || "");
+      set("mSeries", d.series || "");
+      var note = document.getElementById("manualNote");
+      if (note) note.textContent = "已选豆瓣版本《" + d.title + "》· " +
+        (d.publisher || "出版社待补") + "，字段已自动填充，可修改";
+      var hint = document.getElementById("addHint");
+      if (hint) hint.textContent = "已匹配版本，可直接加入书库或重新搜索";
+    }
+    function probeDouban() {
+      var ctrl = new AbortController();
+      var timer = setTimeout(function () { ctrl.abort(); }, 1500);
+      fetch(DOUBAN_SVC + "/health", { mode: "cors", signal: ctrl.signal })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          clearTimeout(timer);
+          if (j && j.ok) {
+            doubanOnline = true;
+            var hint = document.getElementById("addHint");
+            if (hint) hint.textContent = "豆瓣在线 · 输入书名或 ISBN 搜索候选版本后自动填充";
+          }
+        })
+        .catch(function () { clearTimeout(timer); });
+    }
+    function submitManual() {
+      var title = document.getElementById("mTitle").value.trim();
+      if (!title) { document.getElementById("mTitle").focus(); return; }
+      var yearRaw = document.getElementById("mYear").value.trim();
+      var d = selectedDouban || null;
+      var book = {
+        id: "b-" + Date.now(),
+        title: title,
+        author: document.getElementById("mAuthor").value.trim() || (d && d.author) || "佚名",
+        translator: (d && d.translator) || "",
+        subtitle: (d && d.subtitle) || null,
+        publisher: (d && d.publisher) || "",
+        year: /^\d{4}$/.test(yearRaw) ? parseInt(yearRaw, 10) : (d && d.year) || null,
+        pubDate: (d && d.pubDate) || null,
+        pages: (d && d.pages) || null,
+        binding: (d && d.binding) || null,
+        isbn: document.getElementById("mIsbn").value.trim(),
+        genre: document.getElementById("mGenre").value,
+        series: document.getElementById("mSeries").value.trim() || (d && d.series) || "",
+        status: "pending",
+        addedAt: new Date().toISOString().slice(0, 10),
+        doubanUrl: (d && d.url) || "",
+        cover: ""
+      };
+      selectedDouban = null;
+      store.added.push(book);
+      saveStore();
+      // 豆瓣版本入库：异步下载封面到本地 covers/<id>.jpg
+      if (d && d.url) {
+        var sm = String(d.url).match(/subject\/(\d+)/);
+        if (sm) {
+          (function (bid) {
+            fetch(DOUBAN_SVC + "/save_cover?sid=" + sm[1] + "&book_id=" + encodeURIComponent(bid))
+              .then(function (r) { return r.json(); })
+              .then(function (j) {
+                if (j && j.ok && j.cover) {
+                  store.cover[bid] = j.cover;
+                  saveStore();
+                  renderAll();
+                }
+              })
+              .catch(function () {});
+          })(book.id);
+        }
+      }
+      ["mTitle", "mAuthor", "mSeries", "mYear", "mIsbn"].forEach(function (id) {
+        document.getElementById(id).value = "";
+      });
+      closeAdd();
+      state.view = { kind: "all", value: "" };
+      state.q = "";
+      document.getElementById("searchInput").value = "";
+      renderAll();
+    }
+
+    /* ---------- 题材管理 ---------- */
+    function renderGenreOptions(selected) {
+      var sel = document.getElementById("mGenre");
+      if (!sel) return;
+      var cur = selected || sel.value;
+      var gs = allGenres();
+      sel.innerHTML = gs.length
+        ? gs.map(function (g) {
+            return '<option' + (g === cur ? " selected" : "") + '>' + esc(g) + '</option>';
+          }).join("")
+        : '<option value="">请先添加题材</option>';
+    }
+    function genreCounts() {
+      var gm = {};
+      allBooks().forEach(function (b) {
+        var v = genreOf(b);
+        if (v) gm[v] = (gm[v] || 0) + 1;
+      });
+      return gm;
+    }
+    function openGenreManage() {
+      renderGenreList();
+      document.getElementById("genreOverlay").hidden = false;
+    }
+    function closeGenre() { document.getElementById("genreOverlay").hidden = true; }
+    function renderGenreList() {
+      var gm = genreCounts();
+      var gs = allGenres();
+      document.getElementById("genreList").innerHTML = gs.length
+        ? gs.map(function (g) {
+            return '<div class="genre-row" data-g="' + esc(g) + '">' +
+              '<span class="g-name">' + esc(g) + '</span>' +
+              '<span class="g-count">' + (gm[g] || 0) + ' 本</span>' +
+              '<button class="g-act" data-act="rename">重命名</button>' +
+              '<button class="g-act" data-act="del">删除</button></div>';
+          }).join("")
+        : '<p class="add-empty">还没有题材，在下方添加一个吧。</p>';
+    }
+    function genreRename(row, oldName) {
+      row.innerHTML = '<input class="f-input g-rename" id="gRenameInput" value="' + esc(oldName) + '">' +
+        '<button class="g-act" data-act="save">保存</button>' +
+        '<button class="g-act" data-act="cancel">取消</button>';
+      row.dataset.orig = oldName;
+      var inp = row.querySelector("#gRenameInput");
+      inp.focus(); inp.select();
+    }
+    function genreApplyRename(oldName, newName) {
+      if (!newName || newName === oldName) { renderGenreList(); return; }
+      var list = allGenres().slice();
+      var i = list.indexOf(oldName);
+      if (i > -1) list[i] = newName;
+      store.g.list = list;
+      allBooks().forEach(function (b) {
+        if (genreOf(b) === oldName) {
+          if (store.added.some(function (x) { return x.id === b.id; })) b.genre = newName;
+          else store.g.map[b.id] = newName;
+        }
+      });
+      saveStore();
+      renderGenreList(); renderAll(); renderGenreOptions();
+    }
+    function genreDelete(name) {
+      store.g.list = allGenres().filter(function (x) { return x !== name; });
+      allBooks().forEach(function (b) {
+        if (genreOf(b) === name) {
+          if (store.added.some(function (x) { return x.id === b.id; })) b.genre = "";
+          else store.g.map[b.id] = "";
+        }
+      });
+      saveStore();
+      renderGenreList(); renderAll(); renderGenreOptions();
+    }
+    function genreAdd() {
+      var inp = document.getElementById("gNew");
+      var name = inp.value.trim();
+      if (!name) { inp.focus(); return; }
+      if (allGenres().indexOf(name) > -1) { inp.value = ""; return; }
+      store.g.list = allGenres().concat([name]);
+      saveStore();
+      inp.value = "";
+      renderGenreList(); renderAll(); renderGenreOptions();
+    }
+
+    /* ---------- 图书详情弹层 ---------- */
+    var detailId = null;
+    function openDetail(id) {
+      var b = findBook(id);
+      if (!b) return;
+      detailId = id;
+      var cov = coverOf(b);
+      var inner = cov
+        ? '<img src="' + esc(cov) + '" alt="">'
+        : '<span class="cover-ph">封面</span>';
+      var cover = b.doubanUrl
+        ? '<a class="d-cover" href="' + esc(b.doubanUrl) + '" target="_blank" rel="noopener" title="在豆瓣查看">' + inner + '</a>'
+        : '<div class="d-cover">' + inner + '</div>';
+      var meta = [
+        ['作者', b.author + (b.translator ? ' / ' + b.translator + ' 译' : '')],
+        ['出版社', b.publisher || '—'],
+        ['出版年', b.pubDate || (b.year ? String(b.year) : '—')],
+        ['ISBN', b.isbn || '—'],
+        ['页数', b.pages ? String(b.pages) : '—'],
+        ['装帧', b.binding || '—'],
+        ['丛书', b.series || '—']
+      ];
+      var metaHTML = meta.map(function (m) {
+        return '<div class="m-row"><span class="m-label">' + m[0] +
+          '</span><span class="m-value">' + esc(m[1]) + '</span></div>';
+      }).join('');
+      var acts = '<button class="d-linkish" id="dDel">删除</button>';
+      document.getElementById('detailPanel').innerHTML =
+        '<div class="d-row">' + cover +
+        '<div class="d-info"><div class="d-head"><h2>' + esc(b.title) + '</h2>' +
+        '<div class="d-acts">' + acts + '</div></div>' +
+        (b.subtitle ? '<p class="d-sub">' + esc(b.subtitle) + '</p>' : '') +
+        '<div class="d-hairline"></div>' +
+        '<div class="d-meta">' + metaHTML + '</div></div></div>';
+      document.getElementById('detailOverlay').hidden = false;
+    }
+    function closeDetail() {
+      document.getElementById('detailOverlay').hidden = true;
+      detailId = null;
+    }
+    function deleteBook(id) {
+      var isAdded = store.added.some(function (x) { return x.id === id; });
+      if (isAdded) {
+        store.added = store.added.filter(function (x) { return x.id !== id; });
+      } else {
+        store.deleted.push(id);
+      }
+      saveStore();
+      closeDetail();
+      renderAll();
+    }
+
+    /* ---------- 事件绑定 ---------- */
+    document.getElementById("nav").addEventListener("click", function (e) {
+      if (e.target.closest("#genreManageBtn")) { openGenreManage(); return; }
+      var btn = e.target.closest(".nav-item");
+      if (!btn) return;
+      state.view = { kind: btn.dataset.kind, value: btn.dataset.value || "" };
+      renderAll();
+    });
+    document.getElementById("grid").addEventListener("click", function (e) {
+      var card = e.target.closest(".card");
+      if (!card || !card.dataset.id) return;
+      if (e.target.closest(".cover")) { openDetail(card.dataset.id); return; }
+      if (e.target.closest(".info")) openStatus(card.dataset.id);
+    });
+    document.getElementById("searchInput").addEventListener("input", function () {
+      state.q = this.value;
+      renderHeader(); renderGrid();
+    });
+    document.getElementById("sortSel").addEventListener("change", function () {
+      state.sort = this.value;
+      renderGrid();
+    });
+
+    document.querySelectorAll("#statusOverlay .status-opt").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (!statusTargetId) return;
+        store.status[statusTargetId] = btn.dataset.status;
+        saveStore();
+        closeStatus();
+        renderAll();
+      });
+    });
+
+    /* 详情面板：删除（两段确认，innerHTML 重建，用委托） */
+    document.getElementById('detailPanel').addEventListener('click', function (e) {
+      var del = e.target.closest('#dDel');
+      if (del) {
+        if (del.dataset.armed) {
+          deleteBook(detailId);
+        } else {
+          del.dataset.armed = "1";
+          del.textContent = "确认删除";
+          del.classList.add("confirm");
+          setTimeout(function () {
+            if (del.isConnected) {
+              delete del.dataset.armed;
+              del.textContent = "删除";
+              del.classList.remove("confirm");
+            }
+          }, 3000);
+        }
+        return;
+      }
+    });
+
+    /* 题材管理弹层 */
+    document.getElementById("btnCloseGenre").addEventListener("click", closeGenre);
+    document.getElementById("btnGenreAdd").addEventListener("click", genreAdd);
+    document.getElementById("gNew").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") genreAdd();
+    });
+    document.getElementById("genreList").addEventListener("click", function (e) {
+      var row = e.target.closest(".genre-row");
+      if (!row) return;
+      var act = e.target.closest(".g-act");
+      if (!act) return;
+      var kind = act.dataset.act;
+      if (kind === "rename") {
+        genreRename(row, row.dataset.orig || row.dataset.g);
+      } else if (kind === "cancel") {
+        renderGenreList();
+      } else if (kind === "save") {
+        var inp = row.querySelector("#gRenameInput");
+        genreApplyRename(row.dataset.orig || row.dataset.g, inp ? inp.value.trim() : "");
+      } else if (kind === "del") {
+        if (act.dataset.armed) {
+          genreDelete(row.dataset.g);
+        } else {
+          act.dataset.armed = "1";
+          act.textContent = "确认删除";
+          act.classList.add("confirm");
+          setTimeout(function () {
+            if (act.isConnected) {
+              delete act.dataset.armed;
+              act.textContent = "删除";
+              act.classList.remove("confirm");
+            }
+          }, 3000);
+        }
+      }
+    });
+
+    document.getElementById("btnAdd").addEventListener("click", openAdd);
+    document.getElementById("btnCloseAdd").addEventListener("click", closeAdd);
+    document.getElementById("btnSearchDouban").addEventListener("click", searchDouban);
+    document.getElementById("btnManualAdd").addEventListener("click", submitManual);
+    ["addTitle", "addIsbn"].forEach(function (id) {
+      document.getElementById(id).addEventListener("keydown", function (e) {
+        if (e.key === "Enter") searchDouban();
+      });
+    });
+    document.getElementById("addResults").addEventListener("click", function (e) {
+      var btn = e.target.closest(".db-pick");
+      if (!btn) return;
+      var row = btn.closest(".db-row");
+      if (!row) return;
+      var sid = row.dataset.sid;
+      var all = document.querySelectorAll("#addResults .db-pick");
+      for (var i = 0; i < all.length; i++) {
+        all[i].disabled = false; all[i].textContent = "选择"; all[i].classList.remove("picked");
+      }
+      btn.disabled = true; btn.textContent = "已选择…"; btn.classList.add("picked");
+      fetch(DOUBAN_SVC + "/fetch?id=" + encodeURIComponent(sid), { mode: "cors" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d || d.error) throw new Error((d && d.error) || "无响应");
+          selectedDouban = d;
+          fillForm(d);
+          btn.textContent = "已选择";
+        })
+        .catch(function (err) {
+          btn.disabled = false; btn.textContent = "选择"; btn.classList.remove("picked");
+          var note = document.getElementById("manualNote");
+          if (note) note.textContent = "豆瓣详情获取失败：" + err.message;
+        });
+    });
+    document.getElementById("mTitle").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") submitManual();
+    });
+
+    [["statusOverlay", closeStatus], ["addOverlay", closeAdd], ["detailOverlay", closeDetail],
+     ["genreOverlay", closeGenre]].forEach(function (pair) {
+      document.getElementById(pair[0]).addEventListener("mousedown", function (e) {
+        if (e.target === e.currentTarget) pair[1]();
+      });
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { closeStatus(); closeAdd(); closeDetail(); closeGenre(); }
+    });
+
+    /* ---------- 启动 ---------- */
+    var meta = window.BOOK_META || {};
+    document.getElementById("footUpdated").textContent = "数据更新 " + (meta.updatedAt || "—");
+    document.getElementById("footVersion").textContent = meta.version || "v1.0";
+    renderAll();
+    probeDouban();
+  })();
+  </script>
+</body>
+</html>
