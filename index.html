@@ -347,6 +347,13 @@
         ① Repository access 选「Only select repositories」→ 勾选 <b>book-catalog</b><br>
         ② Permissions → Contents → 「Read and write」→ 生成后复制粘贴到这里<br>
         ③ Token 只存在你的浏览器里，且仅能读写 book-catalog 一个仓库</p>
+        <div class="cloud-hr"></div>
+        <label class="cloud-label">豆瓣云端服务 URL（可选——手机等无法跑本地服务的设备，填 Cloudflare Worker 地址）</label>
+        <input class="f-input" id="cloudDoubanUrl" type="url" placeholder="https://douban.你的域名（部署见 cloudflare\部署说明.md）" autocomplete="off">
+        <p class="note">配置后，本机服务不可用时自动改用云端豆瓣代理（顺序：本机 → 云端）。探测结果见「添加图书」弹层顶部提示。</p>
+      </div>
+      <div class="form-actions">
+        <button class="btn-add" id="btnCloudSave">保存配置</button>
       </div>
       <div class="form-actions">
         <button class="btn-add" id="btnCloudSave">保存 Token</button>
@@ -791,13 +798,15 @@
     }
     function probeDouban() {
       var m = location.search.match(/[?&]svc=([^&]+)/);
-      var list = m ? [decodeURIComponent(m[1])]
-                   : ["http://localhost:8765", "http://127.0.0.1:8765"];
+      var list = m ? [decodeURIComponent(m[1])] : [];
+      list.push("http://localhost:8765", "http://127.0.0.1:8765");
+      var cu = doubanCloudUrl();
+      if (cu && list.indexOf(cu) === -1) list.push(cu);   // 本机优先，云端兜底
       var tryNext = function (i) {
         if (i >= list.length) return;
         var base = list[i];
         var ctrl = new AbortController();
-        var timer = setTimeout(function () { ctrl.abort(); }, 1500);
+        var timer = setTimeout(function () { ctrl.abort(); }, 2000);
         fetch(base + "/health", { mode: "cors", signal: ctrl.signal })
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (j) {
@@ -805,8 +814,9 @@
             if (j && j.ok) {
               DOUBAN_SVC = base;
               doubanOnline = true;
+              var local = base.indexOf("localhost") > -1 || base.indexOf("127.0.0.1") > -1;
               var hint = document.getElementById("addHint");
-              if (hint) hint.textContent = "豆瓣在线 · 输入书名或 ISBN 搜索候选版本后自动填充";
+              if (hint) hint.textContent = "豆瓣在线（" + (local ? "本机" : "云端") + "）· 输入书名或 ISBN 搜索候选版本后自动填充";
             } else { tryNext(i + 1); }
           })
           .catch(function () { clearTimeout(timer); tryNext(i + 1); });
@@ -966,9 +976,16 @@
       var cfg = cloudCfg();
       el.textContent = cfg ? "Token 已配置" : "未配置";
     }
+    function doubanCloudUrl() {
+      try {
+        var c = JSON.parse(localStorage.getItem("booklib.doubancloud") || "null");
+        return (c && c.url) ? c.url.replace(/\/+$/, "") : "";
+      } catch (e) { return ""; }
+    }
     function openCloud() {
       var cfg = cloudCfg();
       document.getElementById("cloudToken").value = cfg ? cfg.token : "";
+      document.getElementById("cloudDoubanUrl").value = doubanCloudUrl();
       setCloudNote(cfg ? "Token 已保存。「上传到云端」覆盖云端数据；「从云端恢复」覆盖本机。读取/恢复不需要 Token。"
                        : "首次使用：按下方说明生成 Fine-grained PAT 并粘贴保存。恢复云端数据不需要 Token。");
       document.getElementById("cloudOverlay").hidden = false;
@@ -976,10 +993,13 @@
     function closeCloud() { document.getElementById("cloudOverlay").hidden = true; }
     function cloudSave() {
       var token = document.getElementById("cloudToken").value.trim();
-      if (!token) { setCloudNote("Token 不能为空。"); return; }
-      localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify({ token: token }));
+      var doubanUrl = document.getElementById("cloudDoubanUrl").value.trim().replace(/\/+$/, "");
+      if (token) localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify({ token: token }));
+      if (doubanUrl) localStorage.setItem("booklib.doubancloud", JSON.stringify({ url: doubanUrl }));
+      else localStorage.removeItem("booklib.doubancloud");
       updateCloudState();
-      setCloudNote("✅ Token 已保存（只存在你的浏览器里）。");
+      setCloudNote("✅ 配置已保存。" + (doubanUrl ? "豆瓣云端已启用，正在重新探测…" : "豆瓣云端已清除。"));
+      if (doubanUrl) probeDouban();
     }
     function ghHeaders(cfg) {
       return {
