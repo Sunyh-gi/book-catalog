@@ -18,7 +18,7 @@
 | 本地使用 | 双击 `index.html`（file://，与线上 localStorage 互不相通） |
 | **云同步（多设备）** | 侧栏「☁ 云同步」→ 粘贴 GitHub Fine-grained PAT（生成步骤见弹层内说明）→「上传到云端」；其他设备刷新即得。恢复/读取不需要 Token |
 | 启用豆瓣在线搜索 | 电脑：运行 `python _douban_server.py`（需 Python）；**手机等无 Python 设备**：在「☁ 云同步」里配置豆瓣云端服务 URL（Cloudflare Worker，部署见 `cloudflare\部署说明.md`），全设备可用 |
-| 同步 books.js 到线上 | `node _gh_push.js`（幂等只推变化文件；token 在 `.gh_token`） |
+| 同步 books.js 到线上 | `node _gh_push.js`（幂等只推变化文件；token 读环境变量 `GHPAT` 或同目录 `.gh_token`，二者提供一个即可） |
 | 录入新书 | 添加图书 → 输入书名或 ISBN → 搜索豆瓣 → 点候选行的「选择」（自动填充）→ 选题材 → 加入书库（封面自动下载到 `covers/`） |
 | 改已购/未购 | 点卡片**文字区**（点封面是打开详情） |
 | 删除图书 | 打开图书详情 → 书名右侧「删除」→ 点两次确认 |
@@ -43,7 +43,7 @@
 ├── _smoke.js                   # 冒烟测试（puppeteer + Edge，60 断言，内置 FIXTURE 测试数据）
 ├── _gh_push.js / .gh_token     # GitHub 推送（幂等只推变化；⚠ token 永不进仓）
 ├── _backup_books_*.js          # books.js 写回前自动备份
-├── 设计稿-01~04.png            # Ardot 设计稿导出（画布 729245977334789）
+├── 设计稿-01~05.png            # Ardot 设计稿导出（01 总览 / 02 添加图书 / 03 卡片规格 / 04 详情 / 05 云同步弹层）
 ├── README.md                   # 本文件
 ├── 项目记忆.md                 # 长期规则与坑（供 AI 快速对齐口径）
 └── docs\
