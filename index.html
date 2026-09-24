@@ -341,18 +341,15 @@
         <button class="close-btn" id="btnCloseCloud" title="关闭">×</button>
       </div>
       <div class="cloud-form">
-        <label class="cloud-label">AppId</label>
-        <input class="f-input" id="cloudAppId" type="text" placeholder="LeanCloud 应用的 AppId" autocomplete="off">
-        <label class="cloud-label">AppKey</label>
-        <input class="f-input" id="cloudAppKey" type="text" placeholder="LeanCloud 应用的 AppKey" autocomplete="off">
-        <label class="cloud-label">区域</label>
-        <select class="f-input" id="cloudRegion">
-          <option value="leancloud.cn">国内版（leancloud.cn）</option>
-          <option value="leancloud.app">国际版（leancloud.app）</option>
-        </select>
+        <label class="cloud-label">GitHub Fine-grained PAT（仅上传时需要）</label>
+        <input class="f-input" id="cloudToken" type="password" placeholder="粘贴 Personal Access Token" autocomplete="off">
+        <p class="note">获取：GitHub → Settings → Developer settings → Fine-grained tokens → Generate：<br>
+        ① Repository access 选「Only select repositories」→ 勾选 <b>book-catalog</b><br>
+        ② Permissions → Contents → 「Read and write」→ 生成后复制粘贴到这里<br>
+        ③ Token 只存在你的浏览器里，且仅能读写 book-catalog 一个仓库</p>
       </div>
       <div class="form-actions">
-        <button class="btn-add" id="btnCloudSave">保存配置</button>
+        <button class="btn-add" id="btnCloudSave">保存 Token</button>
       </div>
       <div class="cloud-hr"></div>
       <div class="cloud-ops">
@@ -954,127 +951,137 @@
       renderGenreList(); renderAll(); renderGenreOptions();
     }
 
-    /* ---------- 云同步（LeanCloud REST，零 SDK 依赖） ---------- */
+    /* ---------- 云同步（GitHub 仓库：data/library.json + covers/cloud/） ---------- */
     var CLOUD_CFG_KEY = "booklib.cloud";
-    var CLOUD_MAP_KEY = "booklib.cloudmap";
+    var CLOUD_REPO = "Sunyh-gi/book-catalog";
+    var CLOUD_DATA = "data/library.json";
+    var CLOUD_COVER_DIR = "covers/cloud";
+    var CLOUD_PAGES = "https://sunyh-gi.github.io/book-catalog/";
     function cloudCfg() {
       try { return JSON.parse(localStorage.getItem(CLOUD_CFG_KEY)) || null; } catch (e) { return null; }
-    }
-    function cloudBase(cfg) { return "https://" + cfg.appId + "." + cfg.region + "/1.1"; }
-    function cloudHeaders(cfg) {
-      return { "X-LC-Id": cfg.appId, "X-LC-Key": cfg.appKey, "Content-Type": "application/json" };
-    }
-    function coverCloudMap() {
-      try { return JSON.parse(localStorage.getItem(CLOUD_MAP_KEY)) || {}; } catch (e) { return {}; }
-    }
-    function saveCoverCloudMap(m) {
-      try { localStorage.setItem(CLOUD_MAP_KEY, JSON.stringify(m)); } catch (e) {}
     }
     function setCloudNote(s) { var el = document.getElementById("cloudNote"); if (el) el.textContent = s; }
     function updateCloudState() {
       var el = document.getElementById("cloudState");
       var cfg = cloudCfg();
-      el.textContent = cfg ? "已配置 " + cfg.appId.slice(0, 6) + "…" : "未配置";
+      el.textContent = cfg ? "Token 已配置" : "未配置";
     }
     function openCloud() {
       var cfg = cloudCfg();
-      document.getElementById("cloudAppId").value = cfg ? cfg.appId : "";
-      document.getElementById("cloudAppKey").value = cfg ? cfg.appKey : "";
-      document.getElementById("cloudRegion").value = cfg ? cfg.region : "leancloud.cn";
-      setCloudNote(cfg ? "已保存配置。「上传到云端」会覆盖云端数据；「从云端恢复」会覆盖本机数据。"
-                       : "首次使用：注册 LeanCloud 并创建应用后，把应用设置页里的 AppId / AppKey 填在这里。");
+      document.getElementById("cloudToken").value = cfg ? cfg.token : "";
+      setCloudNote(cfg ? "Token 已保存。「上传到云端」覆盖云端数据；「从云端恢复」覆盖本机。读取/恢复不需要 Token。"
+                       : "首次使用：按下方说明生成 Fine-grained PAT 并粘贴保存。恢复云端数据不需要 Token。");
       document.getElementById("cloudOverlay").hidden = false;
     }
     function closeCloud() { document.getElementById("cloudOverlay").hidden = true; }
     function cloudSave() {
-      var appId = document.getElementById("cloudAppId").value.trim();
-      var appKey = document.getElementById("cloudAppKey").value.trim();
-      var region = document.getElementById("cloudRegion").value;
-      if (!appId || !appKey) { setCloudNote("AppId 与 AppKey 都要填。"); return; }
-      localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify({ appId: appId, appKey: appKey, region: region }));
+      var token = document.getElementById("cloudToken").value.trim();
+      if (!token) { setCloudNote("Token 不能为空。"); return; }
+      localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify({ token: token }));
       updateCloudState();
-      setCloudNote("✅ 配置已保存，可以上传 / 恢复了。");
+      setCloudNote("✅ Token 已保存（只存在你的浏览器里）。");
     }
+    function ghHeaders(cfg) {
+      return {
+        "Authorization": "Bearer " + cfg.token,
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "User-Agent": "book-catalog"
+      };
+    }
+    function ghGetFileSha(cfg, p) {
+      return fetch("https://api.github.com/repos/" + CLOUD_REPO + "/contents/" + p, { headers: ghHeaders(cfg) })
+        .then(function (r) { return r.json(); })
+        .then(function (j) { return (j && j.sha) ? j.sha : null; })
+        .catch(function () { return null; });
+    }
+    function ghPutFile(cfg, p, contentB64, msg) {
+      return ghGetFileSha(cfg, p).then(function (sha) {
+        return fetch("https://api.github.com/repos/" + CLOUD_REPO + "/contents/" + p, {
+          method: "PUT", headers: ghHeaders(cfg),
+          body: JSON.stringify({ message: msg, content: contentB64, sha: sha || undefined, branch: "main" })
+        }).then(function (r) {
+          if (r.status !== 200 && r.status !== 201) {
+            return r.text().then(function (t) { throw new Error("GitHub " + r.status + ": " + t.slice(0, 140)); });
+          }
+          return r.json();
+        });
+      });
+    }
+    function strToB64(s) { return btoa(unescape(encodeURIComponent(s))); }
     function cloudUpload() {
       var cfg = cloudCfg();
-      if (!cfg) { setCloudNote("请先填写并保存 LeanCloud 配置。"); return; }
-      var base = cloudBase(cfg), H = cloudHeaders(cfg);
-      var map = coverCloudMap();
+      if (!cfg) { setCloudNote("请先粘贴并保存 GitHub Fine-grained PAT。"); return; }
       setCloudNote("正在上传…（封面较多时会稍慢）");
       var payload = {
         status: store.status, added: store.added, g: store.g, deleted: store.deleted,
-        coversRel: {}, coverCloud: map, savedAt: new Date().toISOString()
+        cover: {}, savedAt: new Date().toISOString()
       };
       var jobs = [];
       Object.keys(store.cover).forEach(function (bid) {
         var v = store.cover[bid];
         if (!v) return;
         if (v.indexOf("data:image/") === 0) {
-          if (!map[bid]) jobs.push({ bid: bid, v: v });   // 未上云的 dataURL 封面
+          jobs.push({ bid: bid, data: v.split(",")[1] });   // dataURL → 独立封面文件（Git 自动去重）
         } else {
-          payload.coversRel[bid] = v;                     // 相对路径封面原样同步（本地/线上文件已存在）
+          payload.cover[bid] = v;                            // 相对路径封面原样保留
         }
       });
-      var upNext = function () {
-        if (!jobs.length) return cloudSaveDoc(payload, base, H);
-        var j = jobs.shift();
-        fetch(base + "/files/" + encodeURIComponent(j.bid + ".jpg"), {
-          method: "POST", headers: H,
-          body: JSON.stringify({ base64: j.v })
-        }).then(function (r) { return r.json(); }).then(function (fj) {
-          if (fj && fj.url) { map[j.bid] = fj.url; payload.coverCloud[j.bid] = fj.url; saveCoverCloudMap(map); }
-          upNext();
-        }).catch(function () { upNext(); });   // 单张失败不阻断整体
-      };
-      upNext();
-    }
-    function cloudSaveDoc(payload, base, H) {
-      saveCoverCloudMap(payload.coverCloud);
-      var done = function (j) {
-        if (j && (j.updatedAt || j.objectId)) {
-          setCloudNote("✅ 已上传云端（" + (payload.added ? payload.added.length : 0) + " 本自定义图书，" + String(payload.savedAt).slice(11, 16) + "）");
-        } else {
-          setCloudNote("上传失败：" + JSON.stringify(j).slice(0, 120));
+      var step = function () {
+        if (!jobs.length) {
+          return ghPutFile(cfg, CLOUD_DATA, strToB64(JSON.stringify(payload, null, 2)),
+            "sync: 书库云同步 " + payload.savedAt.slice(0, 16).replace("T", " "))
+            .then(function () {
+              setCloudNote("✅ 已上传云端（" + (payload.added ? payload.added.length : 0) + " 本自定义图书）。其他设备约 1-3 分钟后刷新可见。");
+            })
+            .catch(function (e) { setCloudNote("上传失败：" + e.message); });
         }
+        var j = jobs.shift();
+        ghPutFile(cfg, CLOUD_COVER_DIR + "/" + j.bid + ".jpg", j.data, "sync: 封面 " + j.bid)
+          .then(function () { payload.cover[j.bid] = CLOUD_COVER_DIR + "/" + j.bid + ".jpg"; step(); })
+          .catch(function (e) { setCloudNote("封面上传失败：" + e.message); });
       };
-      fetch(base + "/classes/BookStore/main", { method: "PUT", headers: H, body: JSON.stringify({ payload: JSON.stringify(payload) }) })
-        .then(function (r) {
-          if (r.status === 404) {
-            return fetch(base + "/classes/BookStore", { method: "POST", headers: H, body: JSON.stringify({ objectId: "main", payload: JSON.stringify(payload) }) })
-              .then(function (x) { return x.json(); });
-          }
-          return r.json();
-        })
-        .then(done)
-        .catch(function (e) { setCloudNote("上传失败：" + e.message); });
+      step();
+    }
+    function applyCloudPayload(p, silent) {
+      store.status = p.status || {};
+      store.added = p.added || [];
+      store.g = p.g || { list: null, map: {} };
+      store.deleted = p.deleted || [];
+      store.cover = {};
+      Object.keys(p.cover || {}).forEach(function (bid) { store.cover[bid] = p.cover[bid]; });
+      saveStore();
+      renderAll();
+      if (!silent) closeCloud();
     }
     function cloudRestore() {
-      var cfg = cloudCfg();
-      if (!cfg) { setCloudNote("请先填写并保存 LeanCloud 配置。"); return; }
-      var base = cloudBase(cfg), H = cloudHeaders(cfg);
       setCloudNote("正在拉取云端数据…");
-      fetch(base + "/classes/BookStore/main", { headers: H })
-        .then(function (r) { return r.json(); })
-        .then(function (j) {
-          if (!j || !j.payload) { setCloudNote("云端还没有数据——先在已录入的设备上「上传到云端」。"); return; }
-          var p;
-          try { p = JSON.parse(j.payload); } catch (e) { setCloudNote("云端数据解析失败。"); return; }
+      fetch(CLOUD_PAGES + CLOUD_DATA + "?t=" + Date.now())
+        .then(function (r) { if (!r.ok) throw new Error("云端还没有数据（HTTP " + r.status + "）"); return r.json(); })
+        .then(function (p) {
           var n = p.added ? p.added.length : 0;
           if (!confirm("用云端数据覆盖本机？本机现有的录入 / 标记 / 题材将被替换（云端共 " + n + " 本自定义图书，" + String(p.savedAt || "").replace("T", " ").slice(0, 16) + " 保存）。")) return;
-          store.status = p.status || {};
-          store.added = p.added || [];
-          store.g = p.g || { list: null, map: {} };
-          store.deleted = p.deleted || [];
-          store.cover = {};
-          var map = p.coverCloud || {};
-          Object.keys(map).forEach(function (bid) { store.cover[bid] = map[bid]; });
-          Object.keys(p.coversRel || {}).forEach(function (bid) { if (!store.cover[bid]) store.cover[bid] = p.coversRel[bid]; });
-          saveCoverCloudMap(map);
-          saveStore();
-          closeCloud();
-          renderAll();
+          applyCloudPayload(p);
+          setCloudNote("✅ 已从云端恢复 " + n + " 本自定义图书。");
         })
         .catch(function (e) { setCloudNote("恢复失败：" + e.message); });
+    }
+    /* 新设备 / 新浏览器首次打开：本机无数据时自动加载云端书库 */
+    function cloudAutoLoad() {
+      var hasLocal = (store.added && store.added.length) ||
+        Object.keys(store.status || {}).length || Object.keys(store.cover || {}).length;
+      if (hasLocal) return;
+      fetch(CLOUD_PAGES + CLOUD_DATA + "?t=" + Date.now())
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (p) {
+          if (!p) return;
+          var n = p.added ? p.added.length : 0;
+          if (!n && !Object.keys(p.cover || {}).length && !Object.keys(p.status || {}).length) return;
+          applyCloudPayload(p, true);
+          var el = document.getElementById("cloudState");
+          if (el) el.textContent = "已自动加载云端书库（" + n + " 本）";
+        })
+        .catch(function () {});
     }
 
     /* ---------- 图书详情弹层 ---------- */
@@ -1307,6 +1314,7 @@
     renderAll();
     probeDouban();
     updateCloudState();
+    cloudAutoLoad();
   })();
   </script>
 </body>
