@@ -811,43 +811,60 @@
       document.getElementById("addResultHead").innerHTML = head;
       document.getElementById("addResults").innerHTML = html +
         '<p class="add-empty">正在查询豆瓣…</p>';
+      var renderCandidates = function (list) {
+        if (!list.length) {
+          document.getElementById("addResultHead").innerHTML =
+            '<span>本地书库 · ' + hits.length + ' 个版本</span><span class="muted">豆瓣无候选</span>';
+          document.getElementById("addResults").innerHTML = html +
+            '<p class="add-empty">豆瓣未找到候选版本，可直接在下方手动录入。</p>';
+          return;
+        }
+        document.getElementById("addResultHead").innerHTML =
+          '<span>本地书库 · ' + hits.length + ' 个版本 · 豆瓣候选 ' + list.length + ' 个</span>' +
+          '<span class="muted">点「选择」自动填充下方表单</span>';
+        document.getElementById("addResults").innerHTML = html +
+          '<div class="db-label">豆瓣候选版本</div>' + list.map(dbRowHTML).join("");
+        // 候选自带 abstract（作者/译者/出版社/出版年/定价）时直接展示；
+        // 只给没有摘要的（兜底路径）预取详情，省掉一整轮并发抓取
+        list.filter(function (c) { return !c.abstract; }).forEach(function (c) {
+          var sid = c.id;
+          fetch(DOUBAN_SVC + "/fetch?id=" + encodeURIComponent(sid), { mode: "cors" })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              if (!d || d.error) return;
+              var row = document.querySelector('#addResults .db-row[data-sid="' + sid + '"]');
+              if (!row) return;
+              var more = row.querySelector(".db-more");
+              if (more) {
+                var parts = [d.subtitle || "", d.publisher || "", d.isbn || ""]
+                  .filter(function (x) { return x; });
+                more.textContent = parts.length ? parts.join(" · ") : "";
+              }
+            })
+            .catch(function () {});
+        });
+      };
       fetch(DOUBAN_SVC + "/search?q=" + encodeURIComponent(t || isbn), { mode: "cors" })
         .then(function (r) { return r.json(); })
         .then(function (j) {
           btnReset();
           if (!j || j.error) throw new Error((j && j.error) || "无响应");
           var list = j.candidates || [];
-          if (!list.length) {
-            document.getElementById("addResultHead").innerHTML =
-              '<span>本地书库 · ' + hits.length + ' 个版本</span><span class="muted">豆瓣无候选</span>';
-            document.getElementById("addResults").innerHTML = html +
-              '<p class="add-empty">豆瓣未找到候选版本，可直接在下方手动录入。</p>';
+          /* 本地代理「活着但残废」时的兜底：聚合页被豆瓣风控时 search_douban_page 静默返回 0 条，
+             候选整体退化成 subject_suggest —— 没有任何一条带 abstract（聚合页候选必定带）。
+             此时改用云端代理重搜，否则同名版本与副标题都会丢。 */
+          var degraded = list.length > 0 && !list.some(function (c) { return c.abstract; });
+          if (degraded && doubanCloudUrl()) {
+            fetch(doubanCloudUrl() + "/search?q=" + encodeURIComponent(t || isbn), { mode: "cors" })
+              .then(function (r) { return r.json(); })
+              .then(function (cj) {
+                if (cj && cj.candidates && cj.candidates.length) list = cj.candidates;
+                renderCandidates(list);
+              })
+              .catch(function () { renderCandidates(list); });
             return;
           }
-          document.getElementById("addResultHead").innerHTML =
-            '<span>本地书库 · ' + hits.length + ' 个版本 · 豆瓣候选 ' + list.length + ' 个</span>' +
-            '<span class="muted">点「选择」自动填充下方表单</span>';
-          document.getElementById("addResults").innerHTML = html +
-            '<div class="db-label">豆瓣候选版本</div>' + list.map(dbRowHTML).join("");
-          // 候选自带 abstract（作者/译者/出版社/出版年/定价）时直接展示；
-          // 只给没有摘要的（兜底路径）预取详情，省掉一整轮并发抓取
-          list.filter(function (c) { return !c.abstract; }).forEach(function (c) {
-            var sid = c.id;
-            fetch(DOUBAN_SVC + "/fetch?id=" + encodeURIComponent(sid), { mode: "cors" })
-              .then(function (r) { return r.json(); })
-              .then(function (d) {
-                if (!d || d.error) return;
-                var row = document.querySelector('#addResults .db-row[data-sid="' + sid + '"]');
-                if (!row) return;
-                var more = row.querySelector(".db-more");
-                if (more) {
-                  var parts = [d.subtitle || "", d.publisher || "", d.isbn || ""]
-                    .filter(function (x) { return x; });
-                  more.textContent = parts.length ? parts.join(" · ") : "";
-                }
-              })
-              .catch(function () {});
-          });
+          renderCandidates(list);
         })
         .catch(function (e) {
           btnReset();
@@ -857,12 +874,19 @@
             '<p class="add-empty">豆瓣查询失败：' + esc(e.message || e) + '，可直接在下方手动录入。</p>';
         });
     }
+    /* 豆瓣搜索结果标题形如「可能性的艺术 : 比较政治学30讲」（分隔符是带空格的半角冒号）。
+       副标题的唯一来源就是这里——条目页 #info 里根本没有「副标题」字段，
+       /fetch 永远回 subtitle: null。候选行与启动自愈共用这一份拆分逻辑。 */
+    function splitTitleSub(t) {
+      var s = String(t || "");
+      var ci = s.indexOf("：");
+      if (ci < 0) ci = s.indexOf(":");
+      if (ci < 0) return { title: s.trim(), sub: "" };
+      return { title: s.slice(0, ci).trim(), sub: s.slice(ci + 1).trim() };
+    }
     function dbRowHTML(c) {
-      var title = String(c.title || "");
-      var sub = "";
-      var ci = title.indexOf("：");
-      if (ci < 0) ci = title.indexOf(":");
-      if (ci > -1) { sub = title.slice(ci + 1).trim(); title = title.slice(0, ci).trim(); }
+      var ts = splitTitleSub(c.title);
+      var title = ts.title, sub = ts.sub;
       var coverSrc = DOUBAN_SVC + "/cover?id=" + encodeURIComponent(String(c.id || ""));
       // loading=lazy：候选最多 15 条，全部立即取图会白等十几张；只加载滚进视口的那几行
       var cover = '<img src="' + esc(coverSrc) + '" alt="" loading="lazy" ' +
@@ -892,6 +916,50 @@
       var hint = document.getElementById("addHint");
       if (hint) hint.textContent = "已匹配版本，可直接加入书库或重新搜索";
     }
+    /* ---------- 副标题启动自愈 ----------
+       副标题只能从搜索结果标题拆（豆瓣条目页没有这个字段），所以历史上任何一次
+       「本地代理退化 / 候选行没冒号」录进来的书，subtitle 会永久缺失——改代码救不了
+       已有数据（坏封面那次同一个教训）。启动时（豆瓣在线才跑）按 doubanUrl 里的 sid
+       精确匹配回填一次，静默写回本地库，下次「同步到云端」就带上去。
+       三种结果各有其意：查到副标题 → 写入；查到该条目但标题没冒号 → 写空串
+       （=「豆瓣上确实没有」，免得每次启动都重查一遍）；没匹配到 sid → 保持 null，
+       下次启动再试。只动 store.added，底册书没有副标题覆盖层可用。 */
+    var SUBTITLE_HEAL_MAX = 12;   // 每次启动最多查这么多本，避免一上来给豆瓣一波并发
+    var healRunning = false;
+    function healSubtitles() {
+      if (healRunning || !doubanOnline) return;
+      var todo = (store.added || []).filter(function (b) {
+        if (b.subtitle !== null && b.subtitle !== undefined) return false;
+        return !!(b.title && String(b.doubanUrl || "").match(/subject\/(\d+)/));
+      }).slice(0, SUBTITLE_HEAL_MAX);
+      if (!todo.length) return;
+      healRunning = true;
+      var changed = 0, i = 0;
+      var step = function () {
+        if (i >= todo.length) {
+          healRunning = false;
+          if (changed) { saveStore(); renderAll(); }
+          return;
+        }
+        var b = todo[i++];
+        var sid = String(b.doubanUrl).match(/subject\/(\d+)/)[1];
+        var wait = function () { setTimeout(step, 500); };   // 隔开一点，别把豆瓣打急了
+        fetch(DOUBAN_SVC + "/search?q=" + encodeURIComponent(b.title), { mode: "cors" })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            var hit = (j && j.candidates || []).filter(function (c) {
+              return String(c.id) === sid;
+            })[0];
+            if (!hit) return;                                 // 没匹配到，不下结论
+            var sub = splitTitleSub(hit.title).sub;
+            b.subtitle = sub || "";                           // 有则填，没有则明确记空
+            changed++;
+          })
+          .catch(function () {})
+          .then(wait);
+      };
+      step();
+    }
     function probeDouban() {
       var m = location.search.match(/[?&]svc=([^&]+)/);
       var list = m ? [decodeURIComponent(m[1])] : [];
@@ -914,6 +982,7 @@
               doubanOnline = true;
               var hint = document.getElementById("addHint");
               if (hint) hint.textContent = "豆瓣在线（" + (isLocal ? "本机" : "云端") + "）· 输入书名或 ISBN 搜索候选版本后自动填充";
+              healSubtitles();
             } else { tryNext(i + 1); }
           })
           .catch(function () { clearTimeout(timer); tryNext(i + 1); });
