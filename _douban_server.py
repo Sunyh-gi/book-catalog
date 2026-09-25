@@ -9,10 +9,15 @@
  *   python _douban_server.py            # 默认端口 8765，仅监听 127.0.0.1
  *   python _douban_server.py 9999       # 指定端口
  *
- * 端点：
- *   GET /health           -> {"ok": true, "service": "douban-proxy"}
- *   GET /search?q=百年孤独 -> {"candidates": [{id,title,year,author_name,img,...}]}
- *   GET /fetch?id=6082808 -> 豆瓣条目详情 JSON（与 _douban_cache/<id>.json 同结构）
+ * 端点（与云端 Worker 一致，共 5 个）：
+ *   GET /health                     -> {"ok": true, "service": "douban-proxy"}
+ *   GET /search?q=百年孤独           -> {"candidates": [{id,title,year,author_name,img,...}]}
+ *   GET /fetch?id=6082808           -> 豆瓣条目详情 JSON（与 _douban_cache/<id>.json 同结构）
+ *   GET /cover?id=6082808           -> 封面图片字节（服务端带 Referer，绕过豆瓣 418）
+ *   GET /save_cover?sid=&book_id=   -> 把封面落到 covers/<book_id>.jpg，并回 dataUrl
+ *
+ * 缓存：条目详情 24h（_douban_cache/<id>.json）、搜索结果 10 分钟（内存）、
+ *       封面图落 _douban_cache/covers/<id>.jpg；启动时 sweep_cache() 清掉过期文件。
  *
  * 页面（index.html）启动时探测 /health；在线则「搜索豆瓣」返回候选版本，
  * 离线回落本地查重 + 手动录入。可带 ?svc=http://127.0.0.1:8765 覆盖服务地址。
@@ -29,6 +34,30 @@ PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
 FETCH_TTL = 24 * 3600      # 条目详情缓存 24h
 SEARCH_TTL = 600           # 搜索结果内存缓存 10 分钟
 _search_cache = {}
+
+
+def sweep_cache():
+    """启动时清一遍过期缓存。
+
+    FETCH_TTL 只在「读取时」判断：过期条目会被当成未命中重新抓，但旧文件从不删除，
+    于是 _douban_cache/ 只增不减（详情 JSON + covers/ 里的封面图都没有回收路径）。
+    这里按 mtime 扫一遍，过期的直接删；下次要用手再抓一次即可。
+    """
+    if not CACHE.exists():
+        return 0
+    now, n = time.time(), 0
+    targets = list(CACHE.glob("*.json"))
+    cdir = CACHE / "covers"
+    if cdir.exists():
+        targets += list(cdir.glob("*.jpg"))
+    for f in targets:
+        try:
+            if now - f.stat().st_mtime > FETCH_TTL:
+                f.unlink()
+                n += 1
+        except OSError:
+            pass
+    return n
 
 
 def fetch_cached(sid):
@@ -198,6 +227,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    swept = sweep_cache()
     srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print("藏书阁 · 豆瓣代理已启动：http://127.0.0.1:%d  （Ctrl+C 停止）" % PORT, flush=True)
+    if swept:
+        print("已清理 %d 个过期缓存文件（>%dh）" % (swept, FETCH_TTL // 3600), flush=True)
     srv.serve_forever()
