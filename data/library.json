@@ -8,8 +8,7 @@
     "b-1790353985933": "owned",
     "b-1790355613023": "owned",
     "b-1790355691962": "owned",
-    "b-1790353952264": "owned",
-    "b-1790355973794": "owned"
+    "b-1790353952264": "owned"
   },
   "added": [
     {
@@ -74,7 +73,7 @@
       "title": "世界小史",
       "author": "[英] 恩斯特·贡布里希",
       "translator": "吴秀杰",
-      "subtitle": null,
+      "subtitle": "",
       "publisher": "广西师范大学出版社",
       "year": 2016,
       "pubDate": "2016-01",
@@ -207,7 +206,7 @@
       "title": "游牧时光",
       "author": "南子",
       "translator": "",
-      "subtitle": null,
+      "subtitle": "",
       "publisher": "光明日报出版社",
       "year": 2013,
       "pubDate": "2013-04",
@@ -219,25 +218,6 @@
       "status": "pending",
       "addedAt": "2026-09-25",
       "doubanUrl": "https://book.douban.com/subject/23019288/",
-      "cover": ""
-    },
-    {
-      "id": "b-1790355973794",
-      "title": "英国皇家园艺学会植物学指南",
-      "author": "(英)杰夫•霍奇",
-      "translator": "何毅 译 / 刘全儒 审订",
-      "subtitle": null,
-      "publisher": "重庆大学出版社",
-      "year": 2016,
-      "pubDate": "2016-04",
-      "pages": 228,
-      "binding": "精装",
-      "isbn": "9787562496885",
-      "genre": "园林",
-      "series": "",
-      "status": "pending",
-      "addedAt": "2026-09-25",
-      "doubanUrl": "https://book.douban.com/subject/26744946/",
       "cover": ""
     }
   ],
@@ -272,7 +252,8 @@
     "b-1790335459560",
     "b-1790337445232",
     "b-1790337515559",
-    "b-1790279122170"
+    "b-1790279122170",
+    "b-1790355973794"
   ],
   "cover": {
     "b-1790344850085": "covers/cloud/b-1790344850085.jpg",
@@ -285,8 +266,7 @@
     "b-1790353952264": "covers/cloud/b-1790353952264.jpg",
     "b-1790353985933": "covers/cloud/b-1790353985933.jpg",
     "b-1790355613023": "covers/cloud/b-1790355613023.jpg",
-    "b-1790355691962": "covers/cloud/b-1790355691962.jpg",
-    "b-1790355973794": "covers/cloud/b-1790355973794.jpg"
+    "b-1790355691962": "covers/cloud/b-1790355691962.jpg"
   },
-  "savedAt": "2026-09-25T17:07:59.848Z"
+  "savedAt": "2026-09-25T17:49:46.356Z"
 }
