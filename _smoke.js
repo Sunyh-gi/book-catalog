@@ -575,9 +575,12 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
      副标题的主源是豆瓣条目页 <h2 class="subtitle"><span property="v:subtitle">，不是搜索结果
      标题 —— 所以自愈按 doubanUrl 里的 sid 直接调 /fetch，不再走 /search 按书名匹配。
      历史数据里那些 subtitle=null 的书（录的时候搜索降级，候选行没冒号可拆）靠它补回。
-     三条断言锁死三种结果：详情页有副标题 → 写入；详情页确认没有 → 写空串 ""（=「豆瓣上
-     确实没有」，写空后退出待办不再查）；取详情失败（404/风控）→ 保持 null 且不下结论，
-     下次启动再试。 */
+     四种结果：详情页有副标题 → 写入；详情页确认没有 → 写空串 "" 并记 subV（=「当前解析
+     版本确认过，豆瓣上确实没有」，此后不再查）；取详情失败（404/风控）→ 保持 null 且不
+     下结论，下次启动再试。
+     ⚠ Q4/Q5 锁死「空串必须带版本号才算确认」这条：旧版解析读不到 v:subtitle，会把本该有
+     副标题的书误判成空串，而旧过滤「非 null 即完成」会让它永久退出待办（线上《置身事内》
+     就是这么卡住的）。所以没有 subV 的空串必须重查，subV 已是最新版的空串才不查。 */
   /* index.html 的整段脚本包在 IIFE 里（"use strict"），store/saveStore 都不是全局，
      只能走 localStorage 注入 + 回读，跟场景 H 的 FIXTURE 用法一致 */
   await page2.evaluate(() => {
@@ -590,22 +593,34 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
           doubanUrl: 'https://book.douban.com/subject/99992/' },
         { id: 'b-heal-3', title: '查不到的书', author: '', subtitle: null,
           doubanUrl: 'https://book.douban.com/subject/88888/' },
+        // 旧版解析误判留下的空串（无 subV）→ 必须重查并修正
+        { id: 'b-heal-4', title: '被旧解析锁死的书', author: '', subtitle: '',
+          doubanUrl: 'https://book.douban.com/subject/99991/' },
+        // 当前解析版本已确认「确实没有」的空串 → 不许再查（真查了会拿到「自愈副标题」）
+        { id: 'b-heal-5', title: '已确认无副标题的书', author: '', subtitle: '', subV: 2,
+          doubanUrl: 'https://book.douban.com/subject/99991/' },
       ],
     }));
   });
   await page2.reload({ waitUntil: 'load' });
-  await sleep(4000);   // 3 本 × 500ms 间隔 + 各自 fetch
+  await sleep(5000);   // 4 本实际待查 × 500ms 间隔 + 各自 fetch
   const healed = await page2.evaluate(() => {
     var parsed = JSON.parse(localStorage.getItem('booklib.v1') || '{}');
     var get = function (id) {
       return (parsed.added || []).filter(function (b) { return b.id === id; })[0];
     };
     return { sub: get('b-heal-1').subtitle, blank: get('b-heal-2').subtitle,
-             miss: get('b-heal-3').subtitle };
+             miss: get('b-heal-3').subtitle, stale: get('b-heal-4').subtitle,
+             confirmed: get('b-heal-5').subtitle, blankV: get('b-heal-2').subV };
   });
   ok('Q1 启动自愈从条目详情页回填副标题', healed.sub === '自愈副标题', JSON.stringify(healed));
-  ok('Q2 详情页确无副标题则记空串（退出待办不再查）', healed.blank === '', JSON.stringify(healed));
+  ok('Q2 详情页确无副标题则记空串 + 记 subV（此后不再查）',
+    healed.blank === '' && healed.blankV === 2, JSON.stringify(healed));
   ok('Q3 取详情失败保持 null（不下结论）', healed.miss === null, JSON.stringify(healed));
+  ok('Q4 旧解析误判的空串（无 subV）会被重查并修正',
+    healed.stale === '自愈副标题', JSON.stringify(healed));
+  ok('Q5 当前版本已确认的空串（subV 一致）不再重查',
+    healed.confirmed === '', JSON.stringify(healed));
 
   /* ---------- 场景 R：搜索限流 ----------
      豆瓣软拦截时聚合页回 {"total":0,"error_info":"搜索访问太频繁。"}，代理退化成 suggest：
