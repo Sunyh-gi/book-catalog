@@ -9,7 +9,7 @@
  *   python _douban_fetch.py merge 1084336 --new --book-id b-1011 --genre 文学小说
  *
  * 说明：
- *   search  按书名/ISBN 搜豆瓣，列候选（标题/年份/subject id）
+ *   search  按书名/ISBN 搜豆瓣，列候选（同名不同版本一并列出，不止最匹配的一条）
  *   fetch   抓单个条目详情，解析为 JSON（打印并存 _douban_cache/<id>.json）
  *   merge   把抓到的字段写回 data/books.js（写前自动备份 _backup_books_*.js）
  *           --into <书库id>  更新已有条目（保留 genre/status/addedAt）
@@ -111,22 +111,116 @@ def parse_subject(sid):
     }
 
 
-def cmd_search(q):
-    q = q.strip()
-    url = "https://book.douban.com/j/subject_suggest?q=" + urllib.parse.quote(q)
+def _json_object_at(text, start):
+    """从 text[start]（'{'）起做括号配平，返回一个完整 JSON 对象文本。"""
+    depth, instr, esc = 0, False, False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if instr:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                instr = False
+        elif ch == '"':
+            instr = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+    return None
+
+
+def search_douban_page(q):
+    """search.douban.com 聚合搜索页 → 候选列表（含同名不同版本的全量）。
+
+    豆瓣的 subject_suggest 只给「最匹配的一条」（搜「波斯札记」只回 2023 版，
+    漏掉 2014 版），而这个页面的 window.__DATA__.items 是完整结果集。
+    """
+    url = ("https://search.douban.com/book/subject_search?search_text=%s&cat=1001"
+           % urllib.parse.quote(q))
+    m = re.search(r"window\.__DATA__\s*=\s*(\{.*)", http_get(url), re.S)
+    if not m:
+        return []
+    raw = _json_object_at(m.group(1), 0)
+    if not raw:
+        return []
     try:
-        data = json.loads(http_get(url))
+        data = json.loads(raw)
+    except ValueError:
+        return []
+    out = []
+    for it in (data.get("items") or []):
+        sid = str(it.get("id") or "").strip()
+        if not sid:
+            continue
+        # abstract 形如「作者 / 译者 / 出版社 / 出版年 / 定价」，逐段找 4 位年份最稳
+        parts = [p.strip() for p in (it.get("abstract") or "").split("/")]
+        year = ""
+        for p in parts:
+            mm = re.match(r"(\d{4})", p)
+            if mm:
+                year = mm.group(1)
+                break
+        out.append({
+            "id": sid,
+            "title": it.get("title") or "",
+            "year": year,
+            "author_name": parts[0] if parts else "",
+            "abstract": it.get("abstract") or "",
+            "img": it.get("cover_url") or "",
+            "url": it.get("url") or ("https://book.douban.com/subject/%s/" % sid),
+        })
+    return out
+
+
+def search_subjects(q, limit=15):
+    """搜豆瓣书籍候选，合并三个入口并去重（顺序即相关度：聚合页在前）。
+
+    ① search.douban.com 聚合页：唯一能一次拿到全部同名版本
+    ② subject_suggest：补新书/冷门条目（聚合页偶尔漏，且自带干净的作者/年份）
+    ③ www 聚合页：前两者都空时只抽 sid 兜底
+    """
+    q = q.strip()
+    out, seen = [], set()
+
+    def add(items):
+        for it in items:
+            sid = str(it.get("id") or "").strip()
+            if not sid or sid in seen:
+                continue
+            seen.add(sid)
+            out.append(it)
+
+    try:
+        add(search_douban_page(q))
     except Exception:
-        data = []
-    if not isinstance(data, list) or not data:
-        # 兜底：www 聚合搜索页抽 sid
-        html = http_get("https://www.douban.com/search?cat=1001&q=" + urllib.parse.quote(q))
-        seen, out = set(), []
-        for m in re.finditer(r'sid:\s*(\d+)', html):
-            if m.group(1) not in seen:
-                seen.add(m.group(1))
-                out.append({"id": m.group(1), "title": "", "year": ""})
-        data = out[:10]
+        pass
+    try:
+        s = json.loads(http_get("https://book.douban.com/j/subject_suggest?q=" + urllib.parse.quote(q)))
+        if isinstance(s, list):
+            # type == "b" 才是书（同接口也回电影/音乐），无 type 字段时保留
+            add([x for x in s if not x.get("type") or x.get("type") == "b"])
+    except Exception:
+        pass
+    if not out:
+        try:
+            html = http_get("https://www.douban.com/search?cat=1001&q=" + urllib.parse.quote(q))
+            ids = []
+            for m in re.finditer(r'sid:\s*(\d+)', html):
+                if m.group(1) not in ids:
+                    ids.append(m.group(1))
+            add([{"id": i, "title": "", "year": "", "author_name": ""} for i in ids])
+        except Exception:
+            pass
+    return out[:limit]
+
+
+def cmd_search(q):
+    data = search_subjects(q)
     print("豆瓣候选（%d）：" % len(data))
     for i, it in enumerate(data, 1):
         print("  [%d] %s %s  id=%s" % (i, it.get("title", ""), it.get("year", "") or "", it.get("id", "")))
