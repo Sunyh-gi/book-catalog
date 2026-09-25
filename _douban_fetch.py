@@ -49,6 +49,41 @@ def http_get(url, tries=2):
     raise RuntimeError("请求失败 %s :: %s" % (url, last))
 
 
+# 豆瓣图床的镜像域名：img1/img2/img3 是同一套内容（实测同路径同图），img4/img5 不解析；
+# img9 会对本机出口返回 HTTP 200 + text/html 的 JS 风控挑战页（EO_Bot_Ssid）而不是图片
+IMG_MIRRORS = ("img1.doubanio.com", "img2.doubanio.com", "img3.doubanio.com")
+_IMG_HOST_RE = re.compile(r"//img\d+\.doubanio\.com(?=/)")
+
+
+def fetch_image(url, referer="https://book.douban.com/"):
+    """下载图片，返回 (body, content_type)。
+
+    ⚠ 豆瓣部分图床域名（实测 img9）会对本机出口返回 **HTTP 200 + text/html** 的
+    JS 风控挑战页（EO_Bot_Ssid），**状态码正常但根本不是图片**——所以必须校验
+    Content-Type：只看状态码会把 987 字节的 HTML 当封面存下来（页面上就是空白）。
+    命中风控时换到镜像域名（img1/2/3）重试即可拿到真图；
+    换 UA、补 Sec-Fetch-* 等浏览器头都无效（UA 换成 Chrome/140 反而 418）。
+    """
+    cands = [url]
+    if _IMG_HOST_RE.search(url):
+        cands += [_IMG_HOST_RE.sub("//" + h, url, count=1) for h in IMG_MIRRORS]
+    last = None
+    for u in cands:
+        try:
+            hdrs = dict(UA)
+            if referer:
+                hdrs["Referer"] = referer
+            with urllib.request.urlopen(urllib.request.Request(u, headers=hdrs), timeout=30) as r:
+                body, ctype = r.read(), (r.headers.get("Content-Type") or "")
+        except Exception as e:
+            last = e
+            continue
+        if ctype.startswith("image/"):
+            return body, ctype.split(";")[0].strip()
+        last = RuntimeError("非图片响应（Content-Type: %s，%d 字节）" % (ctype or "空", len(body)))
+    raise RuntimeError("封面下载失败 %s :: %s" % (url, last))
+
+
 def strip_tags(s):
     return H.unescape(re.sub(r"<[^>]+>", "", s)).strip()
 
@@ -345,15 +380,11 @@ def build_entry(e):
 
 
 def download_cover(cover_url, book_id):
-    """下载豆瓣封面到 covers/<book_id>.jpg（带 Referer 绕过 418），失败返回 None。"""
+    """下载豆瓣封面到 covers/<book_id>.jpg（走 fetch_image，含换镜像域名绕风控），失败返回 None。"""
     if not cover_url:
         return None
     try:
-        hdrs = dict(UA)
-        hdrs["Referer"] = "https://book.douban.com/"
-        req = urllib.request.Request(cover_url, headers=hdrs)
-        with urllib.request.urlopen(req, timeout=30) as r:
-            data = r.read()
+        data, _ = fetch_image(cover_url)
         covers = ROOT / "covers"
         covers.mkdir(exist_ok=True)
         (covers / (book_id + ".jpg")).write_bytes(data)
