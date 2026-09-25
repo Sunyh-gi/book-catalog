@@ -1,7 +1,8 @@
 {
   "status": {
     "b-1790281483171": "owned",
-    "b-1790316350246": "owned"
+    "b-1790316350246": "owned",
+    "b-1790319580356": "owned"
   },
   "added": [
     {
@@ -79,6 +80,25 @@
       "addedAt": "2026-09-25",
       "doubanUrl": "https://book.douban.com/subject/35819419/",
       "cover": ""
+    },
+    {
+      "id": "b-1790319580356",
+      "title": "游隼",
+      "author": "[英]J.A.贝克",
+      "translator": "李斯本",
+      "subtitle": null,
+      "publisher": "北京日报出版社",
+      "year": 2023,
+      "pubDate": "2023-02",
+      "pages": 320,
+      "binding": "精装",
+      "isbn": "9787547744277",
+      "genre": "社科",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-09-25",
+      "doubanUrl": "https://book.douban.com/subject/36175314/",
+      "cover": ""
     }
   ],
   "g": {
@@ -105,7 +125,8 @@
     "b-1790279122170": "covers/cloud/b-1790279122170.jpg",
     "b-1790279163382": "covers/cloud/b-1790279163382.jpg",
     "b-1790281483171": "covers/cloud/b-1790281483171.jpg",
-    "b-1790316350246": "covers/cloud/b-1790316350246.jpg"
+    "b-1790316350246": "covers/cloud/b-1790316350246.jpg",
+    "b-1790319580356": "covers/cloud/b-1790319580356.jpg"
   },
-  "savedAt": "2026-09-25T06:07:02.334Z"
+  "savedAt": "2026-09-25T07:14:42.202Z"
 }
