@@ -44,6 +44,7 @@
 ├── _gh_push.js / .gh_token     # GitHub 推送（幂等只推变化；⚠ token 永不进仓）
 ├── _backup_books_*.js          # books.js 写回前自动备份
 ├── 设计稿-01~05.png            # Ardot 设计稿导出（01 总览 / 02 添加图书 / 03 卡片规格 / 04 详情 / 05 云同步弹层）
+├── 截图-云同步弹层-线上实现.png  # 线上实拍（重设计落地验证）
 ├── README.md                   # 本文件
 ├── 项目记忆.md                 # 长期规则与坑（供 AI 快速对齐口径）
 └── docs\
@@ -79,8 +80,9 @@
 
 | 端点 | 与本地服务一致 | 备注 |
 |---|---|---|
-| `/health` `/search` `/fetch` `/save_cover` | 相同（`save_cover` 返回 dataUrl，Workers 无文件系统） | 无状态零缓存 |
+| `/health` `/search` `/fetch` `/cover` `/save_cover` | 相同（`save_cover` 返回 dataUrl，Workers 无文件系统） | search 10min / fetch 24h / cover 24h 边缘缓存（Cache API） |
 
+- ⚠ `worker.js` 已补 `/cover`（候选行缩略图，此前云端通道缺该端点会 404 只剩灰占位）与边缘缓存（2026-09-25），**需重新部署到 CF 才生效**
 - 探测顺序：本机 localhost → 127.0.0.1 → 云端（在「☁ 云同步」弹层配置云端 URL，存本浏览器）
 - ⚠ `*.workers.dev` 域名国内被 DNS 污染不可达，**必须绑自定义域名**（部署与验证详见 `cloudflare\部署说明.md`）
 
