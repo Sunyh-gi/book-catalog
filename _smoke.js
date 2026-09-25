@@ -574,6 +574,7 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
      《置身事内》就是这么卡住的，怎么修都不显示。
      现在不再做后台自愈（代理探测 / 退避重试 / 解析版本号那一整套都删了），改成一张按豆瓣
      条目 ID 精确匹配的补丁表，打开页面补一次就落盘：不请求网络、不依赖代理配置。
+     同一趟还顺手清掉旧自愈留下的 `subV` 字段（Q6）——它已无消费方，留着只会随云同步传播。
      ⚠ 所以这一场景必须断言「补丁不靠网络」：Q1 的书 sid 在表里，而 mock 的 /fetch 并不认
      这个 id —— 只要 Q1 过了，就说明副标题是从表里来的，不是抓来的。 */
   /* index.html 的整段脚本包在 IIFE 里（"use strict"），store/saveStore 都不是全局，
@@ -597,6 +598,10 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
         // 没有豆瓣链接 → 补丁表够不着，保持空
         { id: 'b-patch-5', title: '没有豆瓣链接的书', author: '', subtitle: null,
           doubanUrl: '' },
+        // 已废弃自愈留下的 subV（解析版本号）：已无消费方，必须被清掉 ——
+        // 这本故意「已有副标题」，用来锁死「清 subV 在副标题早退之前，不受副标题分支影响」
+        { id: 'b-patch-6', title: '带废弃 subV 的书', author: '', subtitle: '原有副标题',
+          subV: 2, doubanUrl: 'https://book.douban.com/subject/35546622/' },
       ],
     }));
   });
@@ -609,7 +614,7 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
     };
     return { stuck: get('b-patch-1').subtitle, unknown: get('b-patch-2').subtitle,
              dup: get('b-patch-3').subtitle, kept: get('b-patch-4').subtitle,
-             nourl: get('b-patch-5').subtitle };
+             nourl: get('b-patch-5').subtitle, legacy: ('subV' in get('b-patch-6')) };
   });
   ok('Q1 空串书按豆瓣 ID 补上副标题（《置身事内》那个卡死场景，且不靠网络）',
     patched.stuck === '中国政府与经济发展', JSON.stringify(patched));
@@ -619,6 +624,8 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
     patched.dup === null, JSON.stringify(patched));
   ok('Q4 已有副标题的书不被覆盖', patched.kept === '原有副标题', JSON.stringify(patched));
   ok('Q5 无豆瓣链接的书不受影响', patched.nourl === null, JSON.stringify(patched));
+  ok('Q6 废弃的 subV 字段被清掉并落盘（已有副标题也不放过，避免随云同步传播）',
+    patched.legacy === false, JSON.stringify(patched));
 
   /* ---------- 场景 R：搜索限流 ----------
      豆瓣软拦截时聚合页回 {"total":0,"error_info":"搜索访问太频繁。"}，代理退化成 suggest：
