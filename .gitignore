@@ -12,3 +12,4 @@ _tmp_*
 _trash_tmp/
 _douban_cache/
 .workbuddy/
+.trae-html-share-packages/
