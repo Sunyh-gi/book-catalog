@@ -930,49 +930,6 @@
       var hint = document.getElementById("addHint");
       if (hint) hint.textContent = "已匹配版本，可直接加入书库或重新搜索";
     }
-    /* ---------- 副标题一次性补丁 ----------
-       副标题的正确来源是豆瓣条目页 <h2 class="subtitle"><span property="v:subtitle">。
-       历史上有一批书是在「搜索降级」时录进来的：候选标题里没有冒号可拆，条目页明明有
-       副标题也没取到，落库成了空串 ""；而旧版过滤条件「非 null 即完成」又把空串当成
-       已完成永久跳过 —— 于是《置身事内》这类书怎么修都不显示。
-       这里不再做任何后台自愈（探测到代理在线就自动补查、退避重试、解析版本号那一整套都删掉了）：
-       把已经离线核实过、豆瓣条目页确实存在的副标题写成一张补丁表，按豆瓣条目 ID 精确匹配，
-       打开页面补一次就落盘。不请求网络、不依赖代理配置、不需要任何按钮。
-       表里没有的书 = 豆瓣条目页本来就没有副标题（实测 16 本，如 波斯札记 / 世界小史 /
-       城南旧事 / 一九八四 / 游牧时光 / 小家系列 / 地道风物系列），让它们空着才是对的，
-       不是漏抓。
-       另外三本（中国通史（上下册）25986743、秒速5厘米 10周年纪念版（限量）26961600、
-       自然地理学 3100335）豆瓣条目的副标题与书名重复，补上只会显示成「书名 书名」，
-       故意不放进表里。
-       以后新录入的书由「选择候选版本」那一步直接从条目页带进来（见 .db-pick 的 /fetch），
-       不归这张表管。 */
-    var SUB_PATCH = {
-      "35546622": "中国政府与经济发展",              // 置身事内
-      "26744946": "花园里的科学与艺术",              // 英国皇家园艺学会植物学指南
-      "27168945": "从零开始的装修攻略",              // 好好住家居指南
-      "25858712": "百笔血泪经验告诉你的装修早知道",      // 这样装修不后悔（插图修订版）
-      "27039998": "这样装修不后悔2",                // 这样装修省大钱（插图修订版）
-      "26901114": "一个组织学研究",                 // 中国国家治理的制度逻辑
-      "26679036": "地道风物Mook特刊",               // 地道风物003·舌尖上的新年
-      "30265016": "第2版"                        // 台湾
-    };
-    /* 一次性修数据：补「空着的」副标题（书名里已含该副标题的不重复补），并顺手清掉已废弃
-       自愈留下的 subV 字段（那个解析版本号已无任何消费方，留着只会随云同步一直传播）。
-       返回改动了几本 —— 调用方据此决定要不要落盘。 */
-    function applySubtitlePatch() {
-      var n = 0;
-      (store.added || []).forEach(function (b) {
-        if ("subV" in b) { delete b.subV; n++; }
-        if (b.subtitle) return;
-        var m = String(b.doubanUrl || "").match(/subject\/(\d+)/);
-        if (!m) return;
-        var s = SUB_PATCH[m[1]];
-        if (!s || b.title.indexOf(s) > -1) return;
-        b.subtitle = s;
-        n++;
-      });
-      return n;
-    }
     var probeToken = 0;
     function probeDouban() {
       var m = location.search.match(/[?&]svc=([^&]+)/);
@@ -1382,7 +1339,6 @@
       store.cover = {};
       Object.keys(p.cover || {}).forEach(function (bid) { store.cover[bid] = p.cover[bid]; });
       pruneOverlay();
-      applySubtitlePatch();   // 云端拉回来的旧数据同样要吃这张补丁表
       saveStore();
       renderAll();
       if (!silent) closeCloud();
@@ -1704,7 +1660,6 @@
     /* 启动就收敛一次覆盖层：否则旧版留下的残留（删书没清 cover/status/g.map）
        要等到下次云同步才清掉，中间一直挂在 localStorage 里。只在真有残留时写回。 */
     if (pruneOverlay()) saveStore();
-    if (applySubtitlePatch()) saveStore();   // 一次性补丁：补上历史漏抓的副标题并落盘
     renderAll();
     probeDouban();
     updateCloudState();
