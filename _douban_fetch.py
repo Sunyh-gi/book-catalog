@@ -31,6 +31,10 @@ BOOKS_JS = ROOT / "data" / "books.js"
 CACHE = ROOT / "_douban_cache"
 LABELS = ["作者", "译者", "编者", "出版社", "出品方", "副标题", "原作名",
           "出版年", "页数", "定价", "装帧", "丛书", "ISBN", "统一书号"]
+# 详情解析的「结构版本」。改了 parse_subject 的解析口径就 +1：
+# _douban_cache/<id>.json 有 24h TTL，旧文件里 subtitle 是按老口径解析的（恒为 None），
+# 不主动失效的话，改完代码 24h 内读到的还是旧结果，看起来像「修了没用」。
+PARSE_VERSION = 2
 
 
 # ---------------- 反爬验证（sec.douban.com 的 PoW 页） ----------------
@@ -173,6 +177,10 @@ def parse_subject(sid):
         return H.unescape(m.group(1)).strip() if m else ""
 
     title = rx(r'<span property="v:itemreviewed">(.*?)</span>')
+    # ⚠ 必须确认是「真条目页」才敢继续：sec 风控页/异常页里既没有 v:itemreviewed 也没有
+    #   v:subtitle，放过去就会被解析成「这本书没有副标题」，把 None 写进库再也补不回来。
+    if not title:
+        raise RuntimeError("详情页解析失败（非豆瓣条目页）：%s" % url)
     m = re.search(r'<div id="info">(.*?)</div>', html, re.S)
     f = parse_info(m.group(1)) if m else {}
 
@@ -184,9 +192,16 @@ def parse_subject(sid):
 
     return {
         "id": str(sid),
+        "v": PARSE_VERSION,
         "url": url,
         "title": title,
-        "subtitle": f.get("副标题") or None,
+        # 副标题有两个来源：#info 里的「副标题:」行（罕见，实测多本书都没有）与页头
+        # <h2 class="subtitle"><span property="v:subtitle">…</span></h2>（常态）。
+        # ⚠ 后者才是主源——只认 #info 那一行等于永远拿不到副标题，而副标题又是搜索侧
+        #   唯一给不出的字段（搜索被限流时标题就只剩书名）。别再退回只读 #info。
+        "subtitle": (f.get("副标题")
+                     or rx(r'<h2 class="subtitle">\s*<span property="v:subtitle">(.*?)</span>')
+                     or None),
         "author": f.get("作者") or "",
         "translator": f.get("译者") or "",
         "publisher": f.get("出版社") or "",
@@ -262,16 +277,18 @@ def _json_object_at(text, start):
 # 除 PoW 验证页外，豆瓣还有一种「软拦截」：HTTP 200、页面结构正常、window.__DATA__ 也在，
 # 但内容变成 {"total": 0, "error_info": "搜索访问太频繁。", "items": []}。
 # 它既不是异常页也不是验证页，既有检查全放它过去 → search_douban_page 静默返回 0 条
-# → 搜索降级到 subject_suggest（只给最匹配 1 条、标题不带副标题）→ 候选行没冒号可拆
-# → 入库 subtitle: null。表现是「新录的书没副标题」且时好时坏，极易误判成界面问题。
-RATE_LIMIT_DELAYS = (2, 5, 10)   # 命中限流后的退避重试间隔（秒）
+# → 搜索降级到 subject_suggest（只给最匹配 1 条）。
+# ⚠ 不做退避重试：实测本机与云端都是**持续性**限流（连测多个关键词全中），退避只会把
+#   响应从 ~5s 拖到 12~22s 还照样失败。识别出来立刻返回，由页面提示用户稍后重搜。
+#   副标题已改从条目详情页 v:subtitle 取（详情页不受搜索限流影响），所以限流现在只影响
+#   「候选版本全不全」，跟副标题无关了。
 
 
 class DoubanRateLimited(RuntimeError):
-    """豆瓣搜索被限流（__DATA__.error_info 非空），退避重试后仍未放行。
+    """豆瓣搜索被限流（__DATA__.error_info 非空）。
 
-    单独一个异常类型，是为了让调用方能把「被限流」和「真的没结果」区分开——
-    两者都当空结果处理的话，就会静默录进没有副标题的书。
+    单独一个异常类型，是为了区分「被限流」和「真的没结果」：这一轮不能进搜索缓存，
+    页面也要显式提示候选不全，否则用户会把降级结果当成「豆瓣上只有这一版」。
     """
 
 
@@ -316,28 +333,24 @@ def _page_candidates(data):
     return out
 
 
-def search_douban_page(q, retries=RATE_LIMIT_DELAYS):
+def search_douban_page(q):
     """search.douban.com 聚合搜索页 → 候选列表（含同名不同版本的全量）。
 
     豆瓣的 subject_suggest 只给「最匹配的一条」（搜「波斯札记」只回 2023 版，
     漏掉 2014 版），而这个页面的 window.__DATA__.items 是完整结果集。
 
-    ⚠ 命中限流（error_info 非空）时按 retries 退避重试，重试仍失败抛
-    DoubanRateLimited —— 别把「被限流」当成「没结果」，那样会静默录进没副标题的书。
+    ⚠ 命中限流（error_info 非空）抛 DoubanRateLimited —— 别把「被限流」当成「没结果」，
+    那样会静默录进没副标题的书。
     """
     url = ("https://search.douban.com/book/subject_search?search_text=%s&cat=1001"
            % urllib.parse.quote(q))
-    info = ""
-    for i in range(len(retries) + 1):
-        if i:
-            time.sleep(retries[i - 1])
-        data = _search_page_json(url)
-        if data is None:
-            return []
-        info = str(data.get("error_info") or "").strip()
-        if not info:
-            return _page_candidates(data)
-    raise DoubanRateLimited("豆瓣搜索限流：%s（退避重试 %d 次仍失败）" % (info, len(retries)))
+    data = _search_page_json(url)
+    if data is None:
+        return []
+    info = str(data.get("error_info") or "").strip()
+    if info:
+        raise DoubanRateLimited("豆瓣搜索限流：%s" % info)
+    return _page_candidates(data)
 
 
 def suggest_books(q):
