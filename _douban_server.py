@@ -18,7 +18,8 @@
  *   GET /save_cover?sid=&book_id=   -> 把封面落到 covers/<book_id>.jpg，并回 dataUrl
  *
  * 缓存：条目详情 24h（_douban_cache/<id>.json）、搜索结果 10 分钟（内存）、
- *       封面图落 _douban_cache/covers/<id>.jpg；启动时 sweep_cache() 清掉过期文件。
+ *       封面图落 _douban_cache/covers/<id>.jpg、封面直链记 _douban_cache/_cover_urls.json
+ *       （下划线前缀 = 旁路缓存，sweep_cache() 不会当过期详情删）；启动时 sweep_cache() 清过期文件。
  *
  * 页面（index.html）启动时探测 /health；在线则「搜索豆瓣」返回候选版本，
  * 离线回落本地查重 + 手动录入。可带 ?svc=http://127.0.0.1:8765 覆盖服务地址。
