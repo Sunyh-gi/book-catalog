@@ -407,16 +407,7 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
         };
         if (u.pathname === '/health') return send({ ok: true });
         if (u.pathname === '/search') {
-          /* 场景 Q（副标题启动自愈）用独立关键词返回独立候选，避免污染场景 H 的断言 */
           var q = u.searchParams.get('q') || '';
-          if (q.indexOf('自愈测试书') > -1) return send({ candidates: [
-            { id: '99991', title: '自愈测试书 : 自愈副标题', year: '2020', author_name: '测试作者',
-              abstract: '测试作者 / 测试出版社 / 2020-5 / 45.00元' },
-          ] });
-          if (q.indexOf('无副标题书') > -1) return send({ candidates: [
-            { id: '99992', title: '无副标题书', year: '2020', author_name: '测试作者',
-              abstract: '测试作者 / 测试出版社 / 2020-5 / 45.00元' },
-          ] });
           /* 场景 R（限流）：豆瓣软拦截时聚合页回 {"total":0,"error_info":"搜索访问太频繁。"}，
              代理退化成 subject_suggest —— 候选只剩最匹配一条、没有 abstract、标题没冒号。
              代理识别出限流后在响应里带 limited:true，页面据此提示候选不全 */
@@ -445,18 +436,6 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
         if (u.pathname === '/save_cover') {
           var bid = u.searchParams.get('book_id') || 'unknown';
           return send({ ok: true, cover: 'covers/' + bid + '.jpg' });
-        }
-        if (u.pathname === '/fetch' && u.searchParams.get('id') === '99991') {
-          return send({ id: '99991', v: 2, title: '自愈测试书', subtitle: '自愈副标题',
-            author: '测试作者', publisher: '测试出版社',
-            url: 'https://book.douban.com/subject/99991/' });
-        }
-        if (u.pathname === '/fetch' && u.searchParams.get('id') === '99992') {
-          // 详情页确实没有 v:subtitle（实测《波斯札记》《世界小史》《城南旧事》等就是这种）
-          // → 自愈写空串 ""（=「豆瓣上确实没有」），写空后该书退出待办，不会再查
-          return send({ id: '99992', v: 2, title: '无副标题书', subtitle: null,
-            author: '测试作者', publisher: '测试出版社',
-            url: 'https://book.douban.com/subject/99992/' });
         }
         if (u.pathname === '/fetch' && u.searchParams.get('id') === '6082808') {
           return send({ id: '6082808', title: '百年孤独', subtitle: null,
@@ -589,81 +568,82 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
     return e.indexOf('Failed to load resource') === -1;
   }).length === 0, err2.join(' | ').slice(0, 300));
 
-  /* ---------- 场景 Q：副标题启动自愈（走条目详情页） ----------
-     副标题的主源是豆瓣条目页 <h2 class="subtitle"><span property="v:subtitle">，不是搜索结果
-     标题 —— 所以自愈按 doubanUrl 里的 sid 直接调 /fetch，不再走 /search 按书名匹配。
-     历史数据里那些 subtitle=null 的书（录的时候搜索降级，候选行没冒号可拆）靠它补回。
-     四种结果：详情页有副标题 → 写入；详情页确认没有 → 写空串 "" 并记 subV（=「当前解析
-     版本确认过，豆瓣上确实没有」，此后不再查）；取详情失败（404/风控）→ 保持 null 且不
-     下结论，下次启动再试。
-     ⚠ Q4/Q5 锁死「空串必须带版本号才算确认」这条：旧版解析读不到 v:subtitle，会把本该有
-     副标题的书误判成空串，而旧过滤「非 null 即完成」会让它永久退出待办（线上《置身事内》
-     就是这么卡住的）。所以没有 subV 的空串必须重查，subV 已是最新版的空串才不查。 */
+  /* ---------- 场景 Q：副标题一次性补丁 ----------
+     历史上有一批书是在「搜索降级」时录进来的：候选标题里没有冒号可拆，条目页明明有副标题
+     也没取到，落库成了空串 ""；旧版过滤「非 null 即完成」又把空串当成已完成永久跳过 ——
+     《置身事内》就是这么卡住的，怎么修都不显示。
+     现在不再做后台自愈（代理探测 / 退避重试 / 解析版本号那一整套都删了），改成一张按豆瓣
+     条目 ID 精确匹配的补丁表，打开页面补一次就落盘：不请求网络、不依赖代理配置。
+     ⚠ 所以这一场景必须断言「补丁不靠网络」：Q1 的书 sid 在表里，而 mock 的 /fetch 并不认
+     这个 id —— 只要 Q1 过了，就说明副标题是从表里来的，不是抓来的。 */
   /* index.html 的整段脚本包在 IIFE 里（"use strict"），store/saveStore 都不是全局，
      只能走 localStorage 注入 + 回读，跟场景 H 的 FIXTURE 用法一致 */
   await page2.evaluate(() => {
     localStorage.setItem('booklib.v1', JSON.stringify({
       status: {}, g: { list: null, map: {} }, cover: {}, deleted: [],
       added: [
-        { id: 'b-heal-1', title: '自愈测试书', author: '', subtitle: null,
-          doubanUrl: 'https://book.douban.com/subject/99991/' },
-        { id: 'b-heal-2', title: '无副标题书', author: '', subtitle: null,
-          doubanUrl: 'https://book.douban.com/subject/99992/' },
-        { id: 'b-heal-3', title: '查不到的书', author: '', subtitle: null,
-          doubanUrl: 'https://book.douban.com/subject/88888/' },
-        // 旧版解析误判留下的空串（无 subV）→ 必须重查并修正
-        { id: 'b-heal-4', title: '被旧解析锁死的书', author: '', subtitle: '',
-          doubanUrl: 'https://book.douban.com/subject/99991/' },
-        // 当前解析版本已确认「确实没有」的空串 → 不许再查（真查了会拿到「自愈副标题」）
-        { id: 'b-heal-5', title: '已确认无副标题的书', author: '', subtitle: '', subV: 2,
-          doubanUrl: 'https://book.douban.com/subject/99991/' },
+        // 卡死场景：空串 + 补丁表里有 → 必须补上
+        { id: 'b-patch-1', title: '置身事内', author: '', subtitle: '',
+          doubanUrl: 'https://book.douban.com/subject/35546622/' },
+        // 补丁表里没有 → 豆瓣条目页本来就没有副标题，保持空才是对的
+        { id: 'b-patch-2', title: '豆瓣确无副标题的书', author: '', subtitle: '',
+          doubanUrl: 'https://book.douban.com/subject/12345678/' },
+        // 书名里已经含该副标题（台湾 + 第2版）→ 不重复补，否则显示成「台湾第2版 第2版」
+        { id: 'b-patch-3', title: '台湾第2版', author: '', subtitle: null,
+          doubanUrl: 'https://book.douban.com/subject/30265016/' },
+        // 已经有副标题 → 不许覆盖
+        { id: 'b-patch-4', title: '已有副标题的书', author: '', subtitle: '原有副标题',
+          doubanUrl: 'https://book.douban.com/subject/35546622/' },
+        // 没有豆瓣链接 → 补丁表够不着，保持空
+        { id: 'b-patch-5', title: '没有豆瓣链接的书', author: '', subtitle: null,
+          doubanUrl: '' },
       ],
     }));
   });
   await page2.reload({ waitUntil: 'load' });
-  await sleep(5000);   // 4 本实际待查 × 500ms 间隔 + 各自 fetch
-  const healed = await page2.evaluate(() => {
+  await sleep(600);   // 补丁在启动时同步生效，不需要等网络
+  const patched = await page2.evaluate(() => {
     var parsed = JSON.parse(localStorage.getItem('booklib.v1') || '{}');
     var get = function (id) {
       return (parsed.added || []).filter(function (b) { return b.id === id; })[0];
     };
-    return { sub: get('b-heal-1').subtitle, blank: get('b-heal-2').subtitle,
-             miss: get('b-heal-3').subtitle, stale: get('b-heal-4').subtitle,
-             confirmed: get('b-heal-5').subtitle, blankV: get('b-heal-2').subV };
+    return { stuck: get('b-patch-1').subtitle, unknown: get('b-patch-2').subtitle,
+             dup: get('b-patch-3').subtitle, kept: get('b-patch-4').subtitle,
+             nourl: get('b-patch-5').subtitle };
   });
-  ok('Q1 启动自愈从条目详情页回填副标题', healed.sub === '自愈副标题', JSON.stringify(healed));
-  ok('Q2 详情页确无副标题则记空串 + 记 subV（此后不再查）',
-    healed.blank === '' && healed.blankV === 2, JSON.stringify(healed));
-  ok('Q3 取详情失败保持 null（不下结论）', healed.miss === null, JSON.stringify(healed));
-  ok('Q4 旧解析误判的空串（无 subV）会被重查并修正',
-    healed.stale === '自愈副标题', JSON.stringify(healed));
-  ok('Q5 当前版本已确认的空串（subV 一致）不再重查',
-    healed.confirmed === '', JSON.stringify(healed));
+  ok('Q1 空串书按豆瓣 ID 补上副标题（《置身事内》那个卡死场景，且不靠网络）',
+    patched.stuck === '中国政府与经济发展', JSON.stringify(patched));
+  ok('Q2 补丁表没有的书保持空（豆瓣条目页本来就没有，不是漏抓）',
+    patched.unknown === '', JSON.stringify(patched));
+  ok('Q3 书名已含该副标题时不重复补（避免「台湾第2版 第2版」）',
+    patched.dup === null, JSON.stringify(patched));
+  ok('Q4 已有副标题的书不被覆盖', patched.kept === '原有副标题', JSON.stringify(patched));
+  ok('Q5 无豆瓣链接的书不受影响', patched.nourl === null, JSON.stringify(patched));
 
   /* ---------- 场景 R：搜索限流 ----------
      豆瓣软拦截时聚合页回 {"total":0,"error_info":"搜索访问太频繁。"}，代理退化成 suggest：
      候选只剩最匹配一条、没有 abstract、标题没冒号。页面必须显式提示「限流」，否则用户会
      以为「豆瓣上只有这一版」。
-     ⚠ 副标题已改从条目详情页取、**不再依赖搜索**，所以限流期间自愈照样能补 —— R1 就是在
-     「/search 被限流」的前提下断言自愈仍然成功，锁死「副标题与限流已解耦」。 */
+     ⚠ 副标题已改成一张离线补丁表、**完全不碰搜索也不碰网络**，所以限流期间照样补得上 ——
+     R1 就是在「/search 被限流」的前提下断言补丁仍然生效，锁死「副标题与限流彻底解耦」。 */
   await page2.evaluate(() => {
     localStorage.setItem('booklib.v1', JSON.stringify({
       status: {}, g: { list: null, map: {} }, cover: {}, deleted: [],
       added: [
-        { id: 'b-lim-2', title: '限流测试书', author: '', subtitle: null,
-          doubanUrl: 'https://book.douban.com/subject/99991/' },
+        { id: 'b-lim-2', title: '置身事内', author: '', subtitle: null,
+          doubanUrl: 'https://book.douban.com/subject/35546622/' },
       ],
     }));
   });
   await page2.reload({ waitUntil: 'load' });
-  await sleep(2000);
+  await sleep(600);
   const limHeal = await page2.evaluate(() => {
     var parsed = JSON.parse(localStorage.getItem('booklib.v1') || '{}');
     var b = (parsed.added || []).filter(function (x) { return x.id === 'b-lim-2'; })[0];
     return b ? b.subtitle : 'MISSING';
   });
-  ok('R1 搜索限流不影响自愈（副标题走详情页，与限流解耦）',
-    limHeal === '自愈副标题', JSON.stringify(limHeal));
+  ok('R1 搜索限流不影响副标题（补丁表离线生效，与限流彻底解耦）',
+    limHeal === '中国政府与经济发展', JSON.stringify(limHeal));
   await page2.click('#btnAdd'); await sleep(250);
   await page2.type('#addTitle', '限流测试书'); await sleep(100);
   await page2.click('#btnSearchDouban'); await sleep(900);
