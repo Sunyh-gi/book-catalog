@@ -2,7 +2,12 @@
   "status": {
     "b-1790281483171": "owned",
     "b-1790316350246": "owned",
-    "b-1790319580356": "owned"
+    "b-1790319580356": "owned",
+    "b-1790335459560": "owned",
+    "b-1790337385090": "owned",
+    "b-1790337445232": "owned",
+    "b-1790337515559": "owned",
+    "b-1790337574935": "owned"
   },
   "added": [
     {
@@ -99,6 +104,120 @@
       "addedAt": "2026-09-25",
       "doubanUrl": "https://book.douban.com/subject/36175314/",
       "cover": ""
+    },
+    {
+      "id": "b-1790335459560",
+      "title": "波斯札记",
+      "author": "穆宏燕",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "河南大学出版社",
+      "year": 2014,
+      "pubDate": "2014-06",
+      "pages": 360,
+      "binding": "平装",
+      "isbn": "9787564913496",
+      "genre": "社科",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-09-25",
+      "doubanUrl": "https://book.douban.com/subject/25798865/",
+      "cover": ""
+    },
+    {
+      "id": "b-1790337385090",
+      "title": "世界小史",
+      "author": "[英] 恩斯特·贡布里希",
+      "translator": "吴秀杰",
+      "subtitle": null,
+      "publisher": "广西师范大学出版社",
+      "year": 2016,
+      "pubDate": "2016-01",
+      "pages": 368,
+      "binding": "精装",
+      "isbn": "9787549562749",
+      "genre": "社科",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-09-25",
+      "doubanUrl": "https://book.douban.com/subject/26292964/",
+      "cover": ""
+    },
+    {
+      "id": "b-1790337445232",
+      "title": "城南旧事",
+      "author": "林海音",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "万卷出版公司",
+      "year": 2014,
+      "pubDate": "2014-06",
+      "pages": 193,
+      "binding": "平装",
+      "isbn": "9787547026625",
+      "genre": "社科",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-09-25",
+      "doubanUrl": "https://book.douban.com/subject/26789924/",
+      "cover": ""
+    },
+    {
+      "id": "b-1790337515559",
+      "title": "一九八四",
+      "author": "[英] 乔治·奥威尔",
+      "translator": "刘绍铭",
+      "subtitle": null,
+      "publisher": "北京十月文艺出版社",
+      "year": 2013,
+      "pubDate": "2013-01",
+      "pages": 297,
+      "binding": "精装",
+      "isbn": "9787530212721",
+      "genre": "社科",
+      "series": "新经典文库：桂冠文丛",
+      "status": "pending",
+      "addedAt": "2026-09-25",
+      "doubanUrl": "https://book.douban.com/subject/20395185/",
+      "cover": ""
+    },
+    {
+      "id": "b-1790337574935",
+      "title": "中国革命",
+      "author": "[德] 于尔根·奥斯特哈默",
+      "translator": "强朝晖",
+      "subtitle": null,
+      "publisher": "社会科学文献出版社",
+      "year": 2017,
+      "pubDate": "2017-08",
+      "pages": 332,
+      "binding": "精装",
+      "isbn": "9787520108539",
+      "genre": "社科",
+      "series": "甲骨文丛书",
+      "status": "pending",
+      "addedAt": "2026-09-25",
+      "doubanUrl": "https://book.douban.com/subject/27060604/",
+      "cover": ""
+    },
+    {
+      "id": "b-1790337624395",
+      "title": "大国大城",
+      "author": "陆铭",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "上海人民出版社",
+      "year": 2016,
+      "pubDate": "2016-07",
+      "pages": 324,
+      "binding": "平装",
+      "isbn": "9787208138636",
+      "genre": "社科",
+      "series": "文景·中国之治",
+      "status": "pending",
+      "addedAt": "2026-09-25",
+      "doubanUrl": "https://book.douban.com/subject/26824237/",
+      "cover": ""
     }
   ],
   "g": {
@@ -117,13 +236,21 @@
     ],
     "map": {}
   },
-  "deleted": [],
+  "deleted": [
+    "b-1790336776173"
+  ],
   "cover": {
     "b-1790279122170": "covers/cloud/b-1790279122170.jpg",
     "b-1790279163382": "covers/cloud/b-1790279163382.jpg",
     "b-1790281483171": "covers/cloud/b-1790281483171.jpg",
     "b-1790316350246": "covers/cloud/b-1790316350246.jpg",
-    "b-1790319580356": "covers/cloud/b-1790319580356.jpg"
+    "b-1790319580356": "covers/cloud/b-1790319580356.jpg",
+    "b-1790335459560": "covers/cloud/b-1790335459560.jpg",
+    "b-1790337385090": "covers/cloud/b-1790337385090.jpg",
+    "b-1790337445232": "covers/cloud/b-1790337445232.jpg",
+    "b-1790337515559": "covers/cloud/b-1790337515559.jpg",
+    "b-1790337574935": "covers/cloud/b-1790337574935.jpg",
+    "b-1790337624395": "covers/cloud/b-1790337624395.jpg"
   },
-  "savedAt": "2026-09-25T07:14:42.202Z"
+  "savedAt": "2026-09-25T12:00:46.209Z"
 }
