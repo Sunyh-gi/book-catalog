@@ -6,3 +6,8 @@ _backup_*.js
 __pycache__/
 *.log
 _tmp_*
+
+# 本地临时与缓存
+_trash_tmp/
+_douban_cache/
+.workbuddy/
