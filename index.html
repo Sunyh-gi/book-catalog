@@ -492,8 +492,19 @@
       return { status: {}, added: [], g: { list: null, map: {} }, cover: {}, deleted: [] };
     }
     var store = loadStore();
+    var quotaWarned = false;
     function saveStore() {
-      try { localStorage.setItem(LS_KEY, JSON.stringify(store)); } catch (e) {}
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(store));
+        return true;
+      } catch (e) {
+        /* 配额溢出（多为上传封面的 dataURL 过大）绝不能静默失败，否则界面显示成功、刷新即丢 */
+        if (!quotaWarned) {
+          quotaWarned = true;
+          alert("保存失败：浏览器本地存储已满（通常是上传的封面图片过大）。\n本次改动不会被保留，请删除部分上传封面或换更小的图片后重试。");
+        }
+        return false;
+      }
     }
     function allBooks() {
       var del = store.deleted || [];
@@ -522,6 +533,27 @@
       return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
         return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
       });
+    }
+    /* 上传封面：canvas 压到 400px 宽再存。原图直存 dataURL 会成倍膨胀（3MB 图 ≈ 4MB 文本），
+       而 localStorage 通常只有 5MB，很容易撑爆配额导致保存静默失败 */
+    function compressCover(file, cb) {
+      var fr = new FileReader();
+      fr.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          var MAXW = 400;
+          var w = img.naturalWidth || MAXW, h = img.naturalHeight || MAXW;
+          if (w > MAXW) { h = Math.round(h * MAXW / w); w = MAXW; }
+          var cv = document.createElement("canvas");
+          cv.width = w; cv.height = h;
+          cv.getContext("2d").drawImage(img, 0, 0, w, h);
+          try { cb(cv.toDataURL("image/jpeg", 0.82)); } catch (err) { cb(null); }
+        };
+        img.onerror = function () { cb(null); };
+        img.src = fr.result;
+      };
+      fr.onerror = function () { cb(null); };
+      fr.readAsDataURL(file);
     }
 
     /* ---------- 过滤与排序 ---------- */
@@ -1121,7 +1153,17 @@
       var gmap = {};
       Object.keys((cloud.g && cloud.g.map) || {}).forEach(function (k) { gmap[k] = cloud.g.map[k]; });
       Object.keys((store.g && store.g.map) || {}).forEach(function (k) { gmap[k] = store.g.map[k]; });
-      var glist = (store.g && store.g.list) ? store.g.list : ((cloud.g && cloud.g.list) || null);
+      /* 题材字典取并集：任一台设备新增的题材都不该被另一台的字典整体覆盖掉
+         （本机 list 为 null 表示「用默认 5 题材」，空数组 [] 才是「用户清空过」） */
+      var ll = (store.g && store.g.list) || null;
+      var cl = (cloud.g && cloud.g.list) || null;
+      var glist = null;
+      if (ll || cl) {
+        glist = [];
+        (ll || []).concat(cl || []).forEach(function (g) {
+          if (g && glist.indexOf(g) === -1) glist.push(g);
+        });
+      }
       var cover = {};
       Object.keys(cloud.cover || {}).forEach(function (k) { cover[k] = cloud.cover[k]; });
       Object.keys(store.cover || {}).forEach(function (k) { cover[k] = store.cover[k]; });
@@ -1204,8 +1246,10 @@
     }
     /* 新设备 / 新浏览器首次打开：本机无数据时自动加载云端书库 */
     function cloudAutoLoad() {
+      /* deleted 也算「本机有数据」：否则本机把书全删光后，下次打开又会自动拉回云端旧书 */
       var hasLocal = (store.added && store.added.length) ||
-        Object.keys(store.status || {}).length || Object.keys(store.cover || {}).length;
+        Object.keys(store.status || {}).length || Object.keys(store.cover || {}).length ||
+        (store.deleted || []).length;
       if (hasLocal) return;
       fetch(CLOUD_PAGES + CLOUD_DATA + "?t=" + Date.now())
         .then(function (r) { return r.ok ? r.json() : null; })
@@ -1269,6 +1313,9 @@
       } else {
         store.deleted.push(id);
       }
+      /* 必须一并清掉封面覆盖层：残留的 cover[id] 会让云端 cloudCleanOrphans
+         认为该封面「仍被引用」，导致删书后云封面永远回收不掉 */
+      if (store.cover && store.cover[id] !== undefined) delete store.cover[id];
       saveStore();
       closeDetail();
       renderAll();
@@ -1338,19 +1385,24 @@
       if (e.target.id !== 'dUploadInput' || !detailId) return;
       var f = e.target.files && e.target.files[0];
       if (!f) return;
-      if (f.size > 3 * 1024 * 1024) {
-        alert('图片超过 3MB，请先压缩再上传（封面会存入浏览器，注意体积）');
+      if (f.size > 10 * 1024 * 1024) {
+        alert('图片超过 10MB，请换一张较小的图片');
         e.target.value = '';
         return;
       }
-      var fr = new FileReader();
-      fr.onload = function () {
-        store.cover[detailId] = fr.result;
-        saveStore();
+      var inp = e.target, bid = detailId;
+      compressCover(f, function (dataUrl) {
+        inp.value = '';
+        if (!dataUrl) { alert('图片读取失败，请换一张试试'); return; }
+        var prev = store.cover[bid];
+        store.cover[bid] = dataUrl;
+        if (!saveStore()) {   // 存不进去就回滚，避免界面显示已换封面、刷新后又变回去
+          if (prev === undefined) delete store.cover[bid]; else store.cover[bid] = prev;
+          return;
+        }
         renderAll();
-        openDetail(detailId);
-      };
-      fr.readAsDataURL(f);
+        openDetail(bid);
+      });
     });
 
     /* 题材管理弹层 */
