@@ -514,15 +514,18 @@
     }
     /* 覆盖层只保留「仍然存在的书」：删掉的书留下的 cover / status / g.map 条目都是残留。
        尤其 cover 残留会让 cloudCleanOrphans 把云封面当成「仍被引用」，
-       于是删书后那张图永远回收不掉（旧版就是这样攒下孤儿封面的）。 */
+       于是删书后那张图永远回收不掉（旧版就是这样攒下孤儿封面的）。
+       返回清掉的条目数——调用方据此决定要不要写回 localStorage。 */
     function pruneOverlay() {
       var live = {};
       (window.BOOKS || []).forEach(function (b) { live[b.id] = 1; });
       (store.added || []).forEach(function (b) { live[b.id] = 1; });
+      var removed = 0;
       [store.cover, store.status, store.g && store.g.map].forEach(function (m) {
         if (!m) return;
-        Object.keys(m).forEach(function (k) { if (!live[k]) delete m[k]; });
+        Object.keys(m).forEach(function (k) { if (!live[k]) { delete m[k]; removed++; } });
       });
+      return removed;
     }
     function statusOf(b) { return store.status[b.id] || b.status || "pending"; }
     /* 题材：字典（localStorage 可增删改）∪ 书中实际出现的 genre */
@@ -1544,6 +1547,9 @@
     var meta = window.BOOK_META || {};
     document.getElementById("footUpdated").textContent = "数据更新 " + (meta.updatedAt || "—");
     document.getElementById("footVersion").textContent = meta.version || "v1.0";
+    /* 启动就收敛一次覆盖层：否则旧版留下的残留（删书没清 cover/status/g.map）
+       要等到下次云同步才清掉，中间一直挂在 localStorage 里。只在真有残留时写回。 */
+    if (pruneOverlay()) saveStore();
     renderAll();
     probeDouban();
     updateCloudState();
