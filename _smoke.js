@@ -213,6 +213,59 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
     i.value = ''; i.dispatchEvent(new Event('input'));
   }); await sleep(150);
 
+  /* ---------- 场景 N：变更图书题材分类（详情弹层下拉） ---------- */
+  const genreCount = k => page.evaluate(key => {
+    const b = [...document.querySelectorAll('#nav .nav-item')]
+      .find(x => x.dataset.kind === 'genre' && x.dataset.value === key);
+    return b ? +b.querySelector('.nav-count').textContent : -1;
+  }, k);
+  /* 覆盖层里有没有这本书的键、值是什么（null = 没有该键）——题材覆盖的真实落点 */
+  const gmapVal = id => page.evaluate(k => {
+    const s = JSON.parse(localStorage.getItem('booklib.v1') || '{}');
+    const m = (s.g && s.g.map) || {};
+    return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null;
+  }, id);
+
+  await page.type('#searchInput', '百年孤独', { delay: 5 }); await sleep(250);
+  await page.click('.grid .card .cover'); await sleep(300);
+  ok('N1 详情有题材下拉且显示当前分类',
+    (await page.$eval('#dGenre', n => n.value)) === '文学小说',
+    await page.$eval('#dGenre', n => n.value));
+  const gopts = await page.$$eval('#dGenre option', els => els.map(e => e.value));
+  ok('N2 候选 = 未分类 + 全部题材',
+    gopts[0] === '' && gopts.indexOf('文学小说') > -1 && gopts.indexOf('经济管理') > -1,
+    JSON.stringify(gopts));
+
+  const socBefore = await genreCount('社会科学');
+  await page.select('#dGenre', '社会科学'); await sleep(300);
+  ok('N3 改分类写入题材覆盖层', (await gmapVal('b-1001')) === '社会科学',
+    JSON.stringify(await gmapVal('b-1001')));
+  ok('N4 侧栏题材计数随之 +1', (await genreCount('社会科学')) === socBefore + 1,
+    socBefore + ' -> ' + (await genreCount('社会科学')));
+  ok('N5 下拉保持新分类（详情弹层未被重建）',
+    (await page.$eval('#dGenre', n => n.value)) === '社会科学');
+
+  await page.select('#dGenre', ''); await sleep(300);
+  ok('N6 可清回「未分类」（覆盖层写空串，不回落成原题材）',
+    (await gmapVal('b-1001')) === '', JSON.stringify(await gmapVal('b-1001')));
+  ok('N7 清回未分类后计数复原', (await genreCount('社会科学')) === socBefore,
+    'got ' + (await genreCount('社会科学')));
+
+  await page.select('#dGenre', '文学小说'); await sleep(300);
+  ok('N8 改回原题材不留冗余覆盖（覆盖层键被删）',
+    (await gmapVal('b-1001')) === null, JSON.stringify(await gmapVal('b-1001')));
+
+  await page.select('#dGenre', '社会科学'); await sleep(300);
+  await page.keyboard.press('Escape'); await sleep(150);
+  await page.reload({ waitUntil: 'load' }); await sleep(500);
+  ok('N9 题材变更持久化（刷新后覆盖层与侧栏计数都在）',
+    (await gmapVal('b-1001')) === '社会科学' && (await genreCount('社会科学')) === socBefore + 1,
+    JSON.stringify([await gmapVal('b-1001'), await genreCount('社会科学')]));
+  await page.evaluate(() => {
+    const i = document.getElementById('searchInput');
+    i.value = ''; i.dispatchEvent(new Event('input'));
+  }); await sleep(150);
+
   /* ---------- 场景 I/J：布局调整 + 按钮文案 ---------- */
   const addInFilter = await page.$eval('#btnAdd', n => !!n.closest('.filterrow'));
   ok('I1 添加图书按钮在筛选行', addInFilter);
