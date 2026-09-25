@@ -2,7 +2,7 @@
  * 藏书阁 · 冒烟测试
  * ------------------------------------------------------------
  * 用法（PowerShell）：
- *   $env:NODE_PATH = "C:\Users\Mickey\.workbuddy\binaries\node\workspace\node_modules"
+ *   $env:NODE_PATH = "$env:USERPROFILE\.workbuddy\binaries\node\workspace\node_modules"
  *   & <node.exe> _smoke.js
  * 可用环境变量：EDGE_PATH（默认系统 Edge 路径）
  * 被测对象：file://.../index.html（与用户双击打开的方式一致）
