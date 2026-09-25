@@ -26,10 +26,10 @@
  *
  * 零第三方依赖：http.server + urllib（复用 _douban_fetch 的抓取逻辑）。
  * ============================================================ """
-import base64, json, re, sys, time, urllib.parse, urllib.request
+import base64, json, re, sys, time, urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from _douban_fetch import (CACHE, ROOT, UA, http_get, load_cover_urls, parse_subject,
+from _douban_fetch import (CACHE, ROOT, fetch_image, load_cover_urls, parse_subject,
                            search_subjects)
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
@@ -94,27 +94,21 @@ def search_cached(q):
     return data
 
 
-def get_bytes(url, referer=None):
-    """下载字节（豆瓣封面 CDN 需带 Referer 才不被 418 拒绝）。"""
-    hdrs = dict(UA)
-    if referer:
-        hdrs["Referer"] = referer
-    req = urllib.request.Request(url, headers=hdrs)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return r.read()
-
-
 def cover_bytes(sid):
     """返回 (图片字节, content_type)：优先本地缓存，其次现场抓豆瓣封面。
 
     封面直链的查找顺序（越靠前越省一次 5s 的条目页抓取）：
     ① 已落盘的封面图 → ② 搜索时顺手记下的直链 → ③ 详情缓存里的 → ④ 现抓条目页
+    下载一律走 fetch_image（校验 Content-Type + 换镜像域名绕风控），
+    不能只看 HTTP 状态码——img9 风控时回的是 200 + text/html 的挑战页。
     """
     sid = str(sid)
     cdir = CACHE / "covers"
     cdir.mkdir(parents=True, exist_ok=True)
     f = cdir / (sid + ".jpg")
-    if f.exists():
+    # >1KB 才算有效封面：历史上「只看状态码」的版本把 987 字节的风控挑战页
+    # （text/html）当图片存过盘，这类残留文件要忽略掉并重新抓
+    if f.exists() and f.stat().st_size > 1024:
         return f.read_bytes(), "image/jpeg"
     url = load_cover_urls().get(sid) or ""
     if not url:
@@ -128,9 +122,9 @@ def cover_bytes(sid):
         url = parse_subject(sid).get("coverUrl") or ""
     if not url:
         raise RuntimeError("no cover for subject %s" % sid)
-    body = get_bytes(url, referer="https://book.douban.com/")
+    body, ctype = fetch_image(url)
     f.write_bytes(body)
-    return body, "image/jpeg"
+    return body, ctype
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -201,12 +195,12 @@ class Handler(BaseHTTPRequestHandler):
                 if not re.match(r"^[A-Za-z0-9_\-]+$", book_id):
                     return self._send({"error": "bad book_id"}, 400)
                 try:
-                    body, _ = cover_bytes(sid)
+                    body, ctype = cover_bytes(sid)
                     covers = ROOT / "covers"
                     covers.mkdir(exist_ok=True)
                     (covers / (book_id + ".jpg")).write_bytes(body)
                     # dataUrl 与页面来源无关：线上 Pages / 本地 file:// 均可直接显示
-                    data_url = "data:image/jpeg;base64," + base64.b64encode(body).decode()
+                    data_url = "data:%s;base64," % ctype + base64.b64encode(body).decode()
                     self._send({"ok": True, "cover": "covers/%s.jpg" % book_id, "dataUrl": data_url})
                 except Exception as e:
                     self._send({"error": "save_cover failed: %s" % e}, 502)
