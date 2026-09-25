@@ -342,6 +342,17 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
             abstract: '测试作者 / 测试出版社 / 2020-5 / 45.00元',
             pic: 'https://img9.doubanio.com/view/subject/s/public/s9062104.jpg' },
         ] });
+        if (u.pathname === '/cover') {
+          // 1x1 透明 PNG：让候选行封面真的加载成功，好断言 img 的 loading 属性
+          // （返回 404 会触发页面 onerror 把 img 移除，就查不到 loading 了）
+          var png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+          res.writeHead(200, {
+            'Content-Type': 'image/png',
+            'Access-Control-Allow-Origin': '*',
+            'Content-Length': png.length,
+          });
+          return res.end(png);
+        }
         if (u.pathname === '/save_cover') {
           var bid = u.searchParams.get('book_id') || 'unknown';
           return send({ ok: true, cover: 'covers/' + bid + '.jpg' });
@@ -390,6 +401,8 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   ok('H3d 候选行封面容器 = 2', dbCovers === 2, 'got ' + dbCovers);
   const mores = await page2.$$eval('#addResults .db-row .db-more', els => els.map(e => e.textContent.trim()));
   ok('H3e 候选自带摘要直接显示（无需预取详情）', mores[1] && mores[1].indexOf('测试出版社') > -1, JSON.stringify(mores));
+  const lazy = await page2.$$eval('#addResults .db-row .add-cover img', els => els.map(e => e.getAttribute('loading')));
+  ok('H3f 候选封面懒加载（15 条不全量取图）', lazy.length === 2 && lazy.every(v => v === 'lazy'), JSON.stringify(lazy));
   await page2.click('#addResults .db-pick'); await sleep(400);
   const f = await page2.evaluate(() => ({
     t: document.getElementById('mTitle').value,
