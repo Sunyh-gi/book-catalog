@@ -1,8 +1,9 @@
 /* 本地 → GitHub Contents API 同步脚本（不落盘 token，从环境变量 GHPAT 或同目录 .gh_token 读取）
- * 用法: node _gh_push.js [--create] [--pages] [--dry-run] [--msg "提交说明"]
+ * 用法: node _gh_push.js [--create] [--pages] [--dry-run] [--prune] [--msg "提交说明"]
  *   --create   仓库不存在时创建（public，因为免费账号的 Pages 只对 public 仓开放）
  *   --pages    追加启用 GitHub Pages（main / root）
  *   --dry-run  只取远端树比对、列出「有变化」的文件清单，不推送
+ *   --prune    镜像清理：covers/ 下远端有、本地没有的图片一并删除（默认只列不删）
  *   --msg      覆盖默认提交说明
  * 推送清单: 下方 STATIC 白名单 + 自动扫描 covers/ 下的所有图片
  *   STATIC 是显式白名单，本地文件（如 项目记忆.md）不在其中就不会被推上去。
@@ -37,6 +38,11 @@ const STATIC = [
 const SCAN_DIRS = ["covers"];
 
 const DEFAULT_MSG = "chore: 同步图书管理平台";
+
+/* --prune：镜像清理 —— covers/ 下「远端有、本地没有」的图片一并删掉。
+   旧版只增不删，本地删过的封面在远端会永久留着（顶层 covers/ 就是这么攒下 9 个残留的）。
+   默认关闭：本地 covers/ 万一没同步过来，误删远端封面不可逆。 */
+const PRUNE = process.argv.includes("--prune");
 
 const API = "https://api.github.com";
 
@@ -124,6 +130,23 @@ async function putFile(f, content, remoteSha, msg) {
   console.log((remoteSha ? "更新" : "新建") + " " + f + " (" + content.length + " B)");
 }
 
+async function delFile(f, sha, msg) {
+  const p = await req(API + "/repos/" + REPO + "/contents/" + encPath(f), {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: msg + " [delete " + f + "]", branch: BRANCH, sha: sha })
+  });
+  if (p.status !== 200) throw new Error("DELETE " + f + " -> " + p.status + " " + (await p.text()).slice(0, 300));
+  console.log("删除 " + f);
+}
+
+/* 远端「本地没有」的扫描目录图片（只比直接子级，不递归，与 listFiles 口径一致） */
+function prunableFiles(remoteTree, localFiles) {
+  const pat = new RegExp("^(" + SCAN_DIRS.join("|") + ")/[^/]+\\.(jpg|jpeg|png|webp)$", "i");
+  const local = new Set(localFiles);
+  return Object.keys(remoteTree).filter(function (f) { return pat.test(f) && !local.has(f); });
+}
+
 async function enablePages() {
   const p = await req(API + "/repos/" + REPO + "/pages", {
     method: "POST",
@@ -154,9 +177,14 @@ async function main() {
     plan.push({ f: f, content: content, sha: sha, remoteSha: remoteSha });
   }
 
+  const prunable = prunableFiles(remoteTree, files);
+
   console.log("比对完成：" + files.length + " 个文件里 " + plan.length + " 个有变化"
     + (files.length - plan.length ? "，跳过 " + (files.length - plan.length) + " 个未改动" : ""));
-  if (!plan.length) { console.log("远端已是最新，无需推送。"); return; }
+  if (prunable.length) {
+    console.log("远端镜像残留 " + prunable.length + " 个：" + prunable.join(", "));
+  }
+  if (!plan.length && !prunable.length) { console.log("远端已是最新，无需推送。"); return; }
   plan.forEach(function (p) {
     console.log("  " + (p.remoteSha ? "M" : "A") + " " + p.f + "  (" + p.content.length + " B)");
   });
@@ -165,12 +193,25 @@ async function main() {
   /* 2) 逐个推送 */
   for (const p of plan) await putFile(p.f, p.content, p.remoteSha, msg);
 
+  /* 2.5) 镜像清理：本地已不存在的封面，远端一并删掉 */
+  if (prunable.length) {
+    if (PRUNE) { for (const f of prunable) await delFile(f, remoteTree[f], msg); }
+    else { console.log("（未加 --prune，上述残留仅列出、未删除）"); }
+  }
+
   /* 3) 回读校验：重新拉树，一次性比对本次全部文件（树偶有极短延迟，不一致时重试） */
   for (let i = 1; i <= 3; i++) {
     const after = await fetchRemoteTree();
     const bad = plan.filter(function (p) { return after[p.f] !== p.sha; });
-    if (!bad.length) { console.log("回读校验通过：" + plan.length + " 个文件 sha 全部一致"); break; }
-    if (i === 3) throw new Error("回读校验失败：" + bad.map(function (p) { return p.f; }).join(", "));
+    const left = PRUNE ? prunable.filter(function (f) { return after[f]; }) : [];
+    if (!bad.length && !left.length) {
+      console.log("回读校验通过：" + plan.length + " 个文件 sha 全部一致"
+        + (PRUNE && prunable.length ? "，已删除 " + prunable.length + " 个残留" : ""));
+      break;
+    }
+    if (i === 3) {
+      throw new Error("回读校验失败：" + bad.concat(left).map(function (p) { return typeof p === "string" ? p : p.f; }).join(", "));
+    }
     await new Promise(function (r) { setTimeout(r, 2000); });
   }
 
