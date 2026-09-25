@@ -18,6 +18,7 @@
  * 零第三方依赖：urllib + re。抓取频率低、单线程，带浏览器 UA。
  * ============================================================ """
 import argparse, html as H, json, pathlib, re, shutil, sys, time, urllib.parse, urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 UA = {
     "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -111,6 +112,40 @@ def parse_subject(sid):
     }
 
 
+COVER_URLS = CACHE / "_cover_urls.json"
+
+
+def load_cover_urls():
+    """读 sid -> 封面直链的旁路缓存（文件缺失/损坏都当空表）。"""
+    try:
+        d = json.loads(COVER_URLS.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def remember_cover_urls(items):
+    """搜索时豆瓣已把封面直链一并返回，记下来。
+
+    否则页面为 15 个候选各请求一次 /cover，而每个 /cover 都要现抓一遍条目页
+    （实测 5s）——15 条就是十几秒的封面等待。记下后 /cover 只剩「下图片」。
+    写盘失败不影响搜索，静默跳过即可。
+    """
+    m, n = load_cover_urls(), 0
+    for it in items:
+        sid, url = str(it.get("id") or "").strip(), (it.get("img") or "").strip()
+        if sid and url and m.get(sid) != url:
+            m[sid] = url
+            n += 1
+    if n:
+        try:
+            CACHE.mkdir(exist_ok=True)
+            COVER_URLS.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
+        except OSError:
+            pass
+    return n
+
+
 def _json_object_at(text, start):
     """从 text[start]（'{'）起做括号配平，返回一个完整 JSON 对象文本。"""
     depth, instr, esc = 0, False, False
@@ -177,12 +212,24 @@ def search_douban_page(q):
     return out
 
 
+def suggest_books(q):
+    """subject_suggest（输入联想）→ 只取书籍条目。"""
+    s = json.loads(http_get("https://book.douban.com/j/subject_suggest?q=" + urllib.parse.quote(q)))
+    if not isinstance(s, list):
+        return []
+    # type == "b" 才是书（同接口也回电影/音乐），无 type 字段时保留
+    return [x for x in s if not x.get("type") or x.get("type") == "b"]
+
+
 def search_subjects(q, limit=15):
     """搜豆瓣书籍候选，合并三个入口并去重（顺序即相关度：聚合页在前）。
 
     ① search.douban.com 聚合页：唯一能一次拿到全部同名版本
     ② subject_suggest：补新书/冷门条目（聚合页偶尔漏，且自带干净的作者/年份）
     ③ www 聚合页：前两者都空时只抽 sid 兜底
+
+    ⚠ ①②**必须并行**：豆瓣单请求就要 5s 上下（服务端慢，不是传输量），
+    串行会把一次搜索拖到 10s。并行的代价是对豆瓣多一个并发请求，可接受。
     """
     q = q.strip()
     out, seen = [], set()
@@ -195,17 +242,13 @@ def search_subjects(q, limit=15):
             seen.add(sid)
             out.append(it)
 
-    try:
-        add(search_douban_page(q))
-    except Exception:
-        pass
-    try:
-        s = json.loads(http_get("https://book.douban.com/j/subject_suggest?q=" + urllib.parse.quote(q)))
-        if isinstance(s, list):
-            # type == "b" 才是书（同接口也回电影/音乐），无 type 字段时保留
-            add([x for x in s if not x.get("type") or x.get("type") == "b"])
-    except Exception:
-        pass
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_page, f_sugg = ex.submit(search_douban_page, q), ex.submit(suggest_books, q)
+        for f in (f_page, f_sugg):
+            try:
+                add(f.result())
+            except Exception:
+                pass
     if not out:
         try:
             html = http_get("https://www.douban.com/search?cat=1001&q=" + urllib.parse.quote(q))
@@ -216,7 +259,9 @@ def search_subjects(q, limit=15):
             add([{"id": i, "title": "", "year": "", "author_name": ""} for i in ids])
         except Exception:
             pass
-    return out[:limit]
+    out = out[:limit]
+    remember_cover_urls(out)
+    return out
 
 
 def cmd_search(q):
