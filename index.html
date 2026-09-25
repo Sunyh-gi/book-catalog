@@ -18,7 +18,7 @@
     --solid: #4F4F4F;    /* 实心块 / 按钮 / 导航图标 */
     --stroke-soft: #E8E8E8;
   }
-  html, body { height: 100%; }
+  html, body { height: 100%; overflow: hidden; }
   body {
     display: flex; background: #fff; color: var(--ink); font-size: 13px;
     font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif;
@@ -31,7 +31,7 @@
 
   /* ============ 侧栏 ============ */
   .sidebar { width: 320px; flex: 0 0 320px; border-right: 1px solid var(--line);
-    display: flex; flex-direction: column; min-height: 100vh; }
+    display: flex; flex-direction: column; height: 100%; min-height: 0; }
   .brand { height: 88px; display: flex; align-items: center; gap: 10px; padding: 0 20px;
     border-bottom: 1px solid var(--line); flex: 0 0 auto; }
   .brand-logo { width: 32px; height: 32px; border-radius: 8px; background: var(--solid);
@@ -57,10 +57,12 @@
     align-items: center; justify-content: space-between; padding: 0 20px;
     font-size: 11px; color: var(--foot); flex: 0 0 auto; }
 
-  /* ============ 主区 ============ */
-  .main { flex: 1; min-width: 0; padding: 14px 88px 28px; }
-  .content { max-width: 942px; margin: 0 auto; }
-  .topbar { height: 88px; display: flex; align-items: center; justify-content: space-between; }
+  /* ============ 主区（app shell：仅书卡网格滚动，页头/筛选行固定） ============ */
+  .main { flex: 1; min-width: 0; height: 100%; overflow: hidden;
+    display: flex; flex-direction: column; padding: 14px 80px 28px; }
+  .content { width: 100%; max-width: 960px; height: 100%; margin: 0 auto;
+    display: flex; flex-direction: column; min-height: 0; }
+  .topbar { height: 88px; flex: 0 0 88px; display: flex; align-items: center; justify-content: space-between; }
   .topbar h1 { font-size: 20px; font-weight: 500; color: var(--ink); line-height: 28px; }
   .page-meta { margin-top: 5px; font-size: 12px; line-height: 17px; color: var(--assist); }
   .topbar-actions { display: flex; align-items: center; gap: 10px; }
@@ -76,7 +78,7 @@
   .btn-solid:hover { background: #454545; }
   .btn-solid .plus { font-size: 15px; line-height: 1; margin-top: -1px; }
 
-  .filterrow { margin-top: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .filterrow { margin-top: 20px; flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .sortwrap select {
     height: 36px; padding: 0 30px 0 12px; border: none; outline: none; border-radius: 6px;
     background-color: var(--ctrl); color: var(--text); font-size: 13px; cursor: pointer;
@@ -85,9 +87,15 @@
     background-repeat: no-repeat; background-position: right 10px center;
   }
 
-  /* ============ 书卡网格 ============ */
+  /* ============ 书卡网格（唯一滚动区） ============ */
+  .gridwrap { flex: 1; min-height: 0; overflow-y: auto; margin-top: 32px;
+    scrollbar-width: thin; scrollbar-color: #E0E0E0 transparent; }
+  .gridwrap::-webkit-scrollbar { width: 6px; }
+  .gridwrap::-webkit-scrollbar-track { background: transparent; }
+  .gridwrap::-webkit-scrollbar-thumb { background: #E4E4E4; border-radius: 3px; }
+  .gridwrap::-webkit-scrollbar-thumb:hover { background: #D6D6D6; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 150px));
-    column-gap: 48px; row-gap: 56px; padding-top: 32px; }
+    column-gap: 52px; row-gap: 56px; }
   .card { display: flex; flex-direction: column; }
   .cover { position: relative; aspect-ratio: 169 / 240; border-radius: 6px; background: #E9E9EC;
     overflow: hidden; display: flex; align-items: center; justify-content: center; }
@@ -325,8 +333,10 @@
         </div>
       </div>
 
-      <div class="grid" id="grid"></div>
-      <p class="empty-tip" id="emptyTip" hidden>没有符合条件的图书</p>
+      <div class="gridwrap">
+        <div class="grid" id="grid"></div>
+        <p class="empty-tip" id="emptyTip" hidden>没有符合条件的图书</p>
+      </div>
     </div>
   </div>
 
