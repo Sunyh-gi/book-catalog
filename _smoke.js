@@ -173,7 +173,7 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   await page.type('#addTitle', '测试新书', { delay: 5 });
   await page.click('#btnSearchDouban'); await sleep(250);
   const headTxt = await page.$eval('#addResultHead', n => n.textContent.trim());
-  ok('D2 本地查重 0 命中', headTxt.indexOf('匹配到 0 个版本') > -1, headTxt);
+  ok('D2 本地查重 0 命中', /本地书库 · (匹配到 )?0 个版本/.test(headTxt), headTxt);
   await page.type('#mTitle', '测试新书', { delay: 5 });
   await page.type('#mAuthor', '测试作者', { delay: 5 });
   await page.type('#mYear', '2020', { delay: 5 });
