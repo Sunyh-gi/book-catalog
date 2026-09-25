@@ -1,6 +1,7 @@
 {
   "status": {
-    "b-1790281483171": "owned"
+    "b-1790281483171": "owned",
+    "b-1790316350246": "owned"
   },
   "added": [
     {
@@ -59,6 +60,25 @@
       "addedAt": "2026-09-24",
       "doubanUrl": "https://book.douban.com/subject/25883305/",
       "cover": ""
+    },
+    {
+      "id": "b-1790316350246",
+      "title": "可能性的艺术",
+      "author": "刘瑜",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "广西师范大学出版社",
+      "year": 2022,
+      "pubDate": "2022-04",
+      "pages": 384,
+      "binding": "精装",
+      "isbn": "9787559848048",
+      "genre": "社科",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-09-25",
+      "doubanUrl": "https://book.douban.com/subject/35819419/",
+      "cover": ""
     }
   ],
   "g": {
@@ -84,7 +104,8 @@
     "b-1790279044042": "covers/cloud/b-1790279044042.jpg",
     "b-1790279122170": "covers/cloud/b-1790279122170.jpg",
     "b-1790279163382": "covers/cloud/b-1790279163382.jpg",
-    "b-1790281483171": "covers/cloud/b-1790281483171.jpg"
+    "b-1790281483171": "covers/cloud/b-1790281483171.jpg",
+    "b-1790316350246": "covers/cloud/b-1790316350246.jpg"
   },
-  "savedAt": "2026-09-24T20:41:43.065Z"
+  "savedAt": "2026-09-25T06:07:02.334Z"
 }
