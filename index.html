@@ -1092,33 +1092,55 @@
         "User-Agent": "book-catalog"
       };
     }
+    /* GitHub API 的响应头带 Cache-Control: private, max-age=60，浏览器会缓存 GET。
+       连着点两次「同步」就会拿到过期 sha → PUT 被判冲突，故强制 no-store 回源。 */
     function ghGetFileSha(cfg, p) {
-      return fetch("https://api.github.com/repos/" + CLOUD_REPO + "/contents/" + p, { headers: ghHeaders(cfg) })
+      return fetch("https://api.github.com/repos/" + CLOUD_REPO + "/contents/" + p + "?t=" + Date.now(),
+        { headers: ghHeaders(cfg), cache: "no-store" })
         .then(function (r) { return r.json(); })
         .then(function (j) { return (j && j.sha) ? j.sha : null; })
         .catch(function () { return null; });
     }
-    function ghPutFile(cfg, p, contentB64, msg) {
+    /* 409 = 分支被别的写入抢先更新（另一台设备同步 / 命令行 _gh_push 推送），ref 锁冲突；
+       422 = 并发下 sha 缺失或过期。两者都只需重读 sha 再试一次。 */
+    function ghPutFile(cfg, p, contentB64, msg, tries) {
+      tries = tries || 0;
       return ghGetFileSha(cfg, p).then(function (sha) {
         return fetch("https://api.github.com/repos/" + CLOUD_REPO + "/contents/" + p, {
           method: "PUT", headers: ghHeaders(cfg),
           body: JSON.stringify({ message: msg, content: contentB64, sha: sha || undefined, branch: "main" })
         }).then(function (r) {
-          if (r.status !== 200 && r.status !== 201) {
-            return r.text().then(function (t) { throw new Error("GitHub " + r.status + ": " + t.slice(0, 140)); });
-          }
-          return r.json();
+          if (r.status === 200 || r.status === 201) return r.json();
+          return r.text().then(function (t) {
+            if ((r.status === 409 || r.status === 422) && tries < 2) {
+              return new Promise(function (res) { setTimeout(res, 700 * (tries + 1)); })
+                .then(function () { return ghPutFile(cfg, p, contentB64, msg, tries + 1); });
+            }
+            throw new Error(ghErrText(r.status, t));
+          });
         });
       });
     }
+    /* 409 的原始报文是 git 的 ref 锁报错（"Ref ... is at <commit> but expected <commit>"），
+       对用户毫无意义 → 换成能照做的说法 */
+    function ghErrText(status, body) {
+      if (status === 409) return "仓库刚被其他改动更新（另一台设备同步，或命令行推送），请再点一次「同步到云端」";
+      if (status === 401) return "Token 无效或已过期，请重新生成 Fine-grained PAT";
+      if (status === 403) return "Token 权限不足（需 Contents 读写）或已触发限流";
+      if (status === 404) return "仓库或路径不存在，检查 Token 是否授权了 " + CLOUD_REPO;
+      return "GitHub " + status + "：" + String(body).slice(0, 120);
+    }
     function strToB64(s) { return btoa(unescape(encodeURIComponent(s))); }
     /* 清理仓库中不再被任何书引用的云封面（洁癖模式：删干净） */
-    function cloudCleanOrphans(cfg, payload) {
+    function cloudCleanOrphans(cfg, payload, keepIds) {
       var kept = {};
       Object.keys(payload.cover || {}).forEach(function (bid) {
         var v = payload.cover[bid];
         if (v && v.indexOf(CLOUD_COVER_DIR + "/") === 0) kept[v] = 1;
       });
+      /* 本轮上传失败的封面不能当孤儿删掉：它多半只是撞了并发，云端那份还在，
+         删了会让其他设备跟着掉图（下次同步会补传） */
+      (keepIds || []).forEach(function (bid) { kept[CLOUD_COVER_DIR + "/" + bid + ".jpg"] = 1; });
       return fetch("https://api.github.com/repos/" + CLOUD_REPO + "/contents/" + CLOUD_COVER_DIR + "?t=" + Date.now(), { headers: ghHeaders(cfg) })
         .then(function (r) { return r.ok ? r.json() : []; })
         .then(function (list) {
@@ -1203,21 +1225,26 @@
           payload.cover[bid] = v;                            // 相对路径封面原样保留
         }
       });
+      var failed = [];
       var step = function () {
         if (!jobs.length) {
           return ghPutFile(cfg, CLOUD_DATA, strToB64(JSON.stringify(payload, null, 2)),
             "sync: 书库云同步 " + payload.savedAt.slice(0, 16).replace("T", " "))
-            .then(function () { return cloudCleanOrphans(cfg, payload); })
+            .then(function () { return cloudCleanOrphans(cfg, payload, failed); })
             .then(function (removed) {
               setCloudNote("✅ 已上传云端（" + (payload.added ? payload.added.length : 0) + " 本自定义图书）" +
-                (removed ? "，并清理 " + removed + " 个失效封面" : "") + "。其他设备约 1-3 分钟后刷新可见。");
+                (removed ? "，并清理 " + removed + " 个失效封面" : "") +
+                (failed.length ? "；⚠ 有 " + failed.length + " 张封面没传上，再点一次「同步到云端」可补传" : "") +
+                "。其他设备约 1-3 分钟后刷新可见。");
             })
             .catch(function (e) { setCloudNote("上传失败：" + e.message); });
         }
         var j = jobs.shift();
         ghPutFile(cfg, CLOUD_COVER_DIR + "/" + j.bid + ".jpg", j.data, "sync: 封面 " + j.bid)
           .then(function () { payload.cover[j.bid] = CLOUD_COVER_DIR + "/" + j.bid + ".jpg"; step(); })
-          .catch(function (e) { setCloudNote("封面上传失败：" + e.message); });
+          /* 单张封面失败不能中断整轮：旧版在这里直接 return，library.json 就永远不上传，
+             表现为「点了同步、提示失败、云端却一点没变」 */
+          .catch(function () { failed.push(j.bid); step(); });
       };
       step();
     }
