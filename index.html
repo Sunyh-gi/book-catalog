@@ -56,8 +56,8 @@
 
   /* ============ 主区（app shell：仅书卡网格滚动，页头/筛选行固定） ============ */
   .main { flex: 1; min-width: 0; height: 100%; overflow: hidden;
-    display: flex; flex-direction: column; padding: 14px 80px 28px; }
-  .content { width: 100%; max-width: 960px; height: 100%; margin: 0 auto;
+    display: flex; flex-direction: column; padding: 14px 64px 28px; }
+  .content { width: 100%; max-width: 994px; height: 100%; margin: 0 auto;
     display: flex; flex-direction: column; min-height: 0; }
   .topbar { height: 88px; flex: 0 0 88px; display: flex; align-items: center; justify-content: space-between; }
   .topbar h1 { font-size: 20px; font-weight: 500; color: var(--ink); line-height: 28px; }
@@ -89,7 +89,7 @@
     scrollbar-width: none; -ms-overflow-style: none; }
   .gridwrap::-webkit-scrollbar { display: none; width: 0; height: 0; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 150px));
-    column-gap: 52px; row-gap: 56px; }
+    column-gap: 60px; row-gap: 56px; }
   .card { display: flex; flex-direction: column; }
   .cover { position: relative; aspect-ratio: 169 / 240; border-radius: 6px; background: #E9E9EC;
     overflow: hidden; display: flex; align-items: center; justify-content: center; }
