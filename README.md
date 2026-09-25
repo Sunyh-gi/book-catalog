@@ -37,7 +37,7 @@
   added:   [ 新书 ],
   g:       { list: 题材字典 | null, map: { 书id: 题材 } },
   cover:   { 书id: "covers/x.jpg" | "covers/cloud/x.jpg" | "data:image/..." },
-  deleted: [ 被删的底册书 id ] }
+  deleted: [ 被删的书 id ] }
 ```
 
 ## 豆瓣代理
@@ -63,7 +63,8 @@
 index.html                # 应用本体（CSS/JS 全内联，单壳）
 data/books.js             # 底册数据源
 data/library.json         # 云同步快照
-covers/<书id>.jpg         # 封面图（covers/cloud/ 为同步到云端的副本）
+covers/<书id>.jpg         # 命令行入库时下载的封面
+covers/cloud/<书id>.jpg   # 页面同步到云端的封面（dataURL 转存）
 _douban_server.py         # 豆瓣本地代理（127.0.0.1:8765）
 _start_douban_server.cmd  # 双击启动本地代理（Windows）
 _douban_fetch.py          # 豆瓣命令行工具（search / fetch / merge）
