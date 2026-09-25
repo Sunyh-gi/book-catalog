@@ -1,13 +1,13 @@
 {
   "status": {
-    "b-1790281483171": "owned",
     "b-1790316350246": "owned",
     "b-1790319580356": "owned",
     "b-1790335459560": "owned",
     "b-1790337385090": "owned",
     "b-1790337445232": "owned",
     "b-1790337515559": "owned",
-    "b-1790337574935": "owned"
+    "b-1790337574935": "owned",
+    "b-1790340927876": "owned"
   },
   "added": [
     {
@@ -46,25 +46,6 @@
       "status": "pending",
       "addedAt": "2026-09-24",
       "doubanUrl": "https://book.douban.com/subject/30122152/",
-      "cover": ""
-    },
-    {
-      "id": "b-1790281483171",
-      "title": "阿拉伯的劳伦斯",
-      "author": "[美] 斯科特·安德森",
-      "translator": "陆大鹏",
-      "subtitle": null,
-      "publisher": "社会科学文献出版社",
-      "year": 2014,
-      "pubDate": "2014-09",
-      "pages": 672,
-      "binding": "精装",
-      "isbn": "9787509759233",
-      "genre": "历史",
-      "series": "甲骨文丛书",
-      "status": "pending",
-      "addedAt": "2026-09-24",
-      "doubanUrl": "https://book.douban.com/subject/25883305/",
       "cover": ""
     },
     {
@@ -218,6 +199,25 @@
       "addedAt": "2026-09-25",
       "doubanUrl": "https://book.douban.com/subject/26824237/",
       "cover": ""
+    },
+    {
+      "id": "b-1790340927876",
+      "title": "阿拉伯的劳伦斯",
+      "author": "[美] 斯科特·安德森",
+      "translator": "陆大鹏",
+      "subtitle": null,
+      "publisher": "社会科学文献出版社",
+      "year": 2014,
+      "pubDate": "2014-09",
+      "pages": 672,
+      "binding": "精装",
+      "isbn": "9787509759233",
+      "genre": "社科",
+      "series": "甲骨文丛书",
+      "status": "pending",
+      "addedAt": "2026-09-25",
+      "doubanUrl": "https://book.douban.com/subject/25883305/",
+      "cover": ""
     }
   ],
   "g": {
@@ -234,15 +234,24 @@
       "文学",
       "家装"
     ],
-    "map": {}
+    "map": {
+      "b-1790319580356": "文学",
+      "b-1790316350246": "政治",
+      "b-1790337574935": "历史",
+      "b-1790337385090": "历史",
+      "b-1790335459560": "旅行",
+      "b-1790337445232": "文学",
+      "b-1790337515559": "文学",
+      "b-1790340927876": "历史"
+    }
   },
   "deleted": [
-    "b-1790336776173"
+    "b-1790336776173",
+    "b-1790281483171"
   ],
   "cover": {
     "b-1790279122170": "covers/cloud/b-1790279122170.jpg",
     "b-1790279163382": "covers/cloud/b-1790279163382.jpg",
-    "b-1790281483171": "covers/cloud/b-1790281483171.jpg",
     "b-1790316350246": "covers/cloud/b-1790316350246.jpg",
     "b-1790319580356": "covers/cloud/b-1790319580356.jpg",
     "b-1790335459560": "covers/cloud/b-1790335459560.jpg",
@@ -250,7 +259,8 @@
     "b-1790337445232": "covers/cloud/b-1790337445232.jpg",
     "b-1790337515559": "covers/cloud/b-1790337515559.jpg",
     "b-1790337574935": "covers/cloud/b-1790337574935.jpg",
-    "b-1790337624395": "covers/cloud/b-1790337624395.jpg"
+    "b-1790337624395": "covers/cloud/b-1790337624395.jpg",
+    "b-1790340927876": "covers/cloud/b-1790340927876.jpg"
   },
-  "savedAt": "2026-09-25T12:00:46.209Z"
+  "savedAt": "2026-09-25T12:56:03.971Z"
 }
