@@ -339,6 +339,7 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
           { id: '6082808', title: '百年孤独', year: '2011', author_name: '[哥伦比亚] 加西亚·马尔克斯',
             pic: 'https://img9.doubanio.com/view/subject/s/public/s9062104.jpg' },
           { id: '70001', title: '百年孤独（另一版本）: 纪念版', year: '2020', author_name: '测试作者',
+            abstract: '测试作者 / 测试出版社 / 2020-5 / 45.00元',
             pic: 'https://img9.doubanio.com/view/subject/s/public/s9062104.jpg' },
         ] });
         if (u.pathname === '/save_cover') {
@@ -387,6 +388,8 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   ok('H3c 副标题拆分显示', subs.length === 1 && subs[0] === '纪念版', JSON.stringify(subs));
   const dbCovers = await page2.$$eval('#addResults .db-row .add-cover', els => els.length);
   ok('H3d 候选行封面容器 = 2', dbCovers === 2, 'got ' + dbCovers);
+  const mores = await page2.$$eval('#addResults .db-row .db-more', els => els.map(e => e.textContent.trim()));
+  ok('H3e 候选自带摘要直接显示（无需预取详情）', mores[1] && mores[1].indexOf('测试出版社') > -1, JSON.stringify(mores));
   await page2.click('#addResults .db-pick'); await sleep(400);
   const f = await page2.evaluate(() => ({
     t: document.getElementById('mTitle').value,
