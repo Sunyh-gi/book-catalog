@@ -391,7 +391,7 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
         if (u.pathname === '/search') return send({ candidates: [
           { id: '6082808', title: '百年孤独', year: '2011', author_name: '[哥伦比亚] 加西亚·马尔克斯',
             pic: 'https://img9.doubanio.com/view/subject/s/public/s9062104.jpg' },
-          { id: '70001', title: '百年孤独（另一版本）: 纪念版', year: '2020', author_name: '测试作者',
+          { id: '70001', title: '百年孤独（另一版本） : 纪念版', year: '2020', author_name: '测试作者',
             abstract: '测试作者 / 测试出版社 / 2020-5 / 45.00元',
             pic: 'https://img9.doubanio.com/view/subject/s/public/s9062104.jpg' },
         ] });
@@ -494,9 +494,11 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   const hrefH = await page2.$eval('#detailPanel .d-cover', n => n.getAttribute('href'));
   ok('H7 详情字段来自豆瓣', dH.indexOf('南海出版公司') > -1 && dH.indexOf('360') > -1 && dH.indexOf('精装') > -1);
   ok('H8 详情封面豆瓣链接', hrefH === 'https://book.douban.com/subject/6082808/', hrefH);
-  /* H10：副标题链路。第二个候选标题是「百年孤独（另一版本）: 纪念版」，而 mock 的 /fetch
+  /* H10：副标题链路。第二个候选标题是「百年孤独（另一版本） : 纪念版」，而 mock 的 /fetch
      故意返回 subtitle: null —— 真实豆瓣详情页的 #info 常没有「副标题」字段（如《阿拉伯的
-     劳伦斯》只有「原作名」）。这条断言锁死「候选行拆出的副标题要跟着入库并显示在详情卡」 */
+     劳伦斯》只有「原作名」）。这条断言锁死「候选行拆出的副标题要跟着入库并显示在详情卡」。
+     ⚠ 标题里的分隔符按豆瓣真实格式写成「 : 」（冒号两侧带空格），别改成紧凑的「:」——
+     那样测的就不是线上真实数据了（实测《可能性的艺术》=「可能性的艺术 : 比较政治学30讲」） */
   await page2.keyboard.press('Escape'); await sleep(200);
   await page2.evaluate(() => {
     const i = document.getElementById('searchInput');
