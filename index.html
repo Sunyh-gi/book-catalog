@@ -512,6 +512,18 @@
         return del.indexOf(b.id) === -1;
       });
     }
+    /* 覆盖层只保留「仍然存在的书」：删掉的书留下的 cover / status / g.map 条目都是残留。
+       尤其 cover 残留会让 cloudCleanOrphans 把云封面当成「仍被引用」，
+       于是删书后那张图永远回收不掉（旧版就是这样攒下孤儿封面的）。 */
+    function pruneOverlay() {
+      var live = {};
+      (window.BOOKS || []).forEach(function (b) { live[b.id] = 1; });
+      (store.added || []).forEach(function (b) { live[b.id] = 1; });
+      [store.cover, store.status, store.g && store.g.map].forEach(function (m) {
+        if (!m) return;
+        Object.keys(m).forEach(function (k) { if (!live[k]) delete m[k]; });
+      });
+    }
     function statusOf(b) { return store.status[b.id] || b.status || "pending"; }
     /* 题材：字典（localStorage 可增删改）∪ 书中实际出现的 genre */
     function allGenres() {
@@ -1194,6 +1206,7 @@
       store.status = status;
       store.g = { list: glist, map: gmap };
       store.cover = cover;
+      pruneOverlay();
       saveStore();
       renderAll();
     }
@@ -1255,6 +1268,7 @@
       store.deleted = p.deleted || [];
       store.cover = {};
       Object.keys(p.cover || {}).forEach(function (bid) { store.cover[bid] = p.cover[bid]; });
+      pruneOverlay();
       saveStore();
       renderAll();
       if (!silent) closeCloud();
@@ -1334,15 +1348,11 @@
       detailId = null;
     }
     function deleteBook(id) {
-      var isAdded = store.added.some(function (x) { return x.id === id; });
-      if (isAdded) {
-        store.added = store.added.filter(function (x) { return x.id !== id; });
-      } else {
-        store.deleted.push(id);
-      }
-      /* 必须一并清掉封面覆盖层：残留的 cover[id] 会让云端 cloudCleanOrphans
-         认为该封面「仍被引用」，导致删书后云封面永远回收不掉 */
-      if (store.cover && store.cover[id] !== undefined) delete store.cover[id];
+      store.added = store.added.filter(function (x) { return x.id !== id; });
+      /* 自建书也要留墓碑：它的 id 只存在于 added 里，若只从 added 摘掉，
+         另一台设备 added 里那份会在并集合并时把它原样复活并重新推回云端 */
+      if (store.deleted.indexOf(id) === -1) store.deleted.push(id);
+      pruneOverlay();
       saveStore();
       closeDetail();
       renderAll();
