@@ -815,17 +815,24 @@
       document.getElementById("addResultHead").innerHTML = head;
       document.getElementById("addResults").innerHTML = html +
         '<p class="add-empty">正在查询豆瓣…</p>';
-      var renderCandidates = function (list) {
+      /* limited=true：这一轮豆瓣在限流，候选只剩 suggest 的降级结果（标题不带副标题）。
+         必须显式提示——否则用户会以为「豆瓣上确实没有副标题」，录进来的书 subtitle 就是 null。 */
+      var renderCandidates = function (list, limited) {
         if (!list.length) {
           document.getElementById("addResultHead").innerHTML =
-            '<span>本地书库 · ' + hits.length + ' 个版本</span><span class="muted">豆瓣无候选</span>';
+            '<span>本地书库 · ' + hits.length + ' 个版本</span>' +
+            '<span class="muted">' + (limited ? "豆瓣搜索被限流" : "豆瓣无候选") + '</span>';
           document.getElementById("addResults").innerHTML = html +
-            '<p class="add-empty">豆瓣未找到候选版本，可直接在下方手动录入。</p>';
+            '<p class="add-empty">' + (limited
+              ? "豆瓣搜索被限流，本轮没有可用候选。请等几分钟再搜——此时候选缺副标题不作数。"
+              : "豆瓣未找到候选版本，可直接在下方手动录入。") + '</p>';
           return;
         }
         document.getElementById("addResultHead").innerHTML =
           '<span>本地书库 · ' + hits.length + ' 个版本 · 豆瓣候选 ' + list.length + ' 个</span>' +
-          '<span class="muted">点「选择」自动填充下方表单</span>';
+          '<span class="muted">' + (limited
+            ? "豆瓣限流中 · 候选为降级结果，可能缺副标题"
+            : "点「选择」自动填充下方表单") + '</span>';
         document.getElementById("addResults").innerHTML = html +
           '<div class="db-label">豆瓣候选版本</div>' + list.map(dbRowHTML).join("");
         // 候选自带 abstract（作者/译者/出版社/出版年/定价）时直接展示；
@@ -854,21 +861,26 @@
           btnReset();
           if (!j || j.error) throw new Error((j && j.error) || "无响应");
           var list = j.candidates || [];
-          /* 本地代理「活着但残废」时的兜底：聚合页被豆瓣风控时 search_douban_page 静默返回 0 条，
-             候选整体退化成 subject_suggest —— 没有任何一条带 abstract（聚合页候选必定带）。
-             此时改用云端代理重搜，否则同名版本与副标题都会丢。 */
-          var degraded = list.length > 0 && !list.some(function (c) { return c.abstract; });
+          /* 本地代理「活着但残废」时的兜底：聚合页被豆瓣限流/风控时只剩 subject_suggest 的
+             降级候选——没有任何一条带 abstract（聚合页候选必定带），标题也拆不出副标题。
+             此时改用云端代理重搜，否则同名版本与副标题都会丢。
+             j.limited 是代理明确给出的限流信号，比「有没有 abstract」更早更准。 */
+          var degraded = (j.limited === true) ||
+            (list.length > 0 && !list.some(function (c) { return c.abstract; }));
           if (degraded && doubanCloudUrl()) {
             fetch(doubanCloudUrl() + "/search?q=" + encodeURIComponent(t || isbn), { mode: "cors" })
               .then(function (r) { return r.json(); })
               .then(function (cj) {
-                if (cj && cj.candidates && cj.candidates.length) list = cj.candidates;
-                renderCandidates(list);
+                if (cj && cj.candidates && cj.candidates.length) {
+                  renderCandidates(cj.candidates, !!cj.limited);
+                } else {
+                  renderCandidates(list, true);   // 云端也没结果，仍按「被限流」提示，别下结论
+                }
               })
-              .catch(function () { renderCandidates(list); });
+              .catch(function () { renderCandidates(list, true); });
             return;
           }
-          renderCandidates(list);
+          renderCandidates(list, j.limited === true);
         })
         .catch(function (e) {
           btnReset();
@@ -925,23 +937,40 @@
        「本地代理退化 / 候选行没冒号」录进来的书，subtitle 会永久缺失——改代码救不了
        已有数据（坏封面那次同一个教训）。启动时（豆瓣在线才跑）按 doubanUrl 里的 sid
        精确匹配回填一次，静默写回本地库，下次「同步到云端」就带上去。
-       三种结果各有其意：查到副标题 → 写入；查到该条目但标题没冒号 → 写空串
-       （=「豆瓣上确实没有」，免得每次启动都重查一遍）；没匹配到 sid → 保持 null，
-       下次启动再试。只动 store.added，底册书没有副标题覆盖层可用。 */
+       四种结果各有其意：查到副标题 → 写入；查到该条目但标题没冒号 → 写空串
+       （=「豆瓣上确实没有」，免得每次启动都重查一遍）；没匹配到 sid → 保持 null 并记时间戳，
+       24h 后再试；**被限流 → 整轮中止，既不写也不记**（降级候选没有副标题，写空串等于
+       永久锁死，记历史等于 24h 内真不补了）。只动 store.added，底册书没有副标题覆盖层可用。 */
     var SUBTITLE_HEAL_MAX = 12;   // 每次启动最多查这么多本，避免一上来给豆瓣一波并发
+    var HEAL_HISTORY_KEY = "booklib.healHistory";
+    var HEAL_RETRY_MS = 24 * 3600 * 1000;   // 查过但没结论的书，24h 内不再重查
     var healRunning = false;
+    function loadHealHistory() {
+      try { return JSON.parse(localStorage.getItem(HEAL_HISTORY_KEY) || "{}") || {}; }
+      catch (e) { return {}; }
+    }
+    function saveHealHistory(h) {
+      try { localStorage.setItem(HEAL_HISTORY_KEY, JSON.stringify(h)); } catch (e) {}
+    }
     function healSubtitles() {
       if (healRunning || !doubanOnline) return;
+      var history = loadHealHistory();
+      var now = Date.now();
       var todo = (store.added || []).filter(function (b) {
         if (b.subtitle !== null && b.subtitle !== undefined) return false;
-        return !!(b.title && String(b.doubanUrl || "").match(/subject\/(\d+)/));
+        var m = String(b.doubanUrl || "").match(/subject\/(\d+)/);
+        if (!b.title || !m) return false;
+        /* 24h 退避：查过但没匹配到 sid 的书（比如书名对不上）每次都重查，等于每次启动
+           都给豆瓣白打一遍，正是限流的诱因。查过就记时间戳，隔天再试。 */
+        return now - (history[m[1]] || 0) > HEAL_RETRY_MS;
       }).slice(0, SUBTITLE_HEAL_MAX);
       if (!todo.length) return;
       healRunning = true;
-      var changed = 0, i = 0;
+      var changed = 0, histChanged = false, i = 0, stopped = false;
       var step = function () {
-        if (i >= todo.length) {
+        if (stopped || i >= todo.length) {
           healRunning = false;
+          if (histChanged) saveHealHistory(history);
           if (changed) { saveStore(); renderAll(); }
           return;
         }
@@ -951,6 +980,11 @@
         fetch(DOUBAN_SVC + "/search?q=" + encodeURIComponent(b.title), { mode: "cors" })
           .then(function (r) { return r.json(); })
           .then(function (j) {
+            /* 被限流：这一轮的候选是 suggest 降级的，既不能写空串（会永久锁死「没副标题」），
+               也不该记历史（不然 24h 内真的不再补了）。整轮中止，下次启动重来。 */
+            if (j && j.limited) { stopped = true; return; }
+            history[sid] = Date.now();
+            histChanged = true;
             var hit = (j && j.candidates || []).filter(function (c) {
               return String(c.id) === sid;
             })[0];
