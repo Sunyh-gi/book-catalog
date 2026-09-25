@@ -94,7 +94,7 @@ def search_cached(q):
     """同一关键词 10 分钟内直接复用内存结果，不重复打豆瓣。
 
     ⚠ 被限流的那一轮**不进缓存**：它只有 suggest 的降级候选（缺副标题），
-    缓存下来会让页面在 10 分钟内一直拿到残缺结果，自愈也一直补不上。
+    缓存下来会让页面在 10 分钟内一直拿到残缺结果。
     返回 (候选列表, 是否被限流, 限流原因)。
     """
     q = q.strip()
@@ -181,7 +181,7 @@ class Handler(BaseHTTPRequestHandler):
                     data, limited, reason = search_cached(q)
                     payload = {"candidates": data}
                     # 被限流时明确告诉页面：这批候选是 suggest 降级的（缺副标题），
-                    # 页面/自愈据此放弃写入，别给书下「豆瓣上确实没有副标题」的错结论
+                    # 页面据此放弃写入，别给书下「豆瓣上确实没有副标题」的错结论
                     if limited:
                         payload["limited"] = True
                         payload["reason"] = reason
