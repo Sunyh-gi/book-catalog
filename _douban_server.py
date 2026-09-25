@@ -13,6 +13,8 @@
  *   GET /health                     -> {"ok": true, "service": "douban-proxy"}
  *   GET /search?q=百年孤独           -> {"candidates": [{id,title,year,author_name,img,...}]}
  *                                       （search.douban.com 全量版本 + suggest 补充）
+ *                                       被豆瓣限流时额外带 "limited": true —— 此时候选是
+ *                                       suggest 降级的（缺副标题），页面不可据此判定「无副标题」
  *   GET /fetch?id=6082808           -> 豆瓣条目详情 JSON（与 _douban_cache/<id>.json 同结构）
  *   GET /cover?id=6082808           -> 封面图片字节（服务端带 Referer，绕过豆瓣 418）
  *   GET /save_cover?sid=&book_id=   -> 把封面落到 covers/<book_id>.jpg，并回 dataUrl
@@ -83,15 +85,24 @@ def fetch_cached(sid):
 
 
 def search_cached(q):
-    """同一关键词 10 分钟内直接复用内存结果，不重复打豆瓣。"""
+    """同一关键词 10 分钟内直接复用内存结果，不重复打豆瓣。
+
+    ⚠ 被限流的那一轮**不进缓存**：它只有 suggest 的降级候选（缺副标题），
+    缓存下来会让页面在 10 分钟内一直拿到残缺结果，自愈也一直补不上。
+    返回 (候选列表, 是否被限流, 限流原因)。
+    """
     q = q.strip()
     now = time.time()
     hit = _search_cache.get(q)
     if hit and now - hit[0] < SEARCH_TTL:
-        return hit[1]
-    data = search_subjects(q)
-    _search_cache[q] = (now, data)
-    return data
+        return hit[1], hit[2], hit[3]
+    status = {}
+    data = search_subjects(q, status=status)
+    limited = bool(status.get("limited"))
+    reason = status.get("reason") or ""
+    if not limited:
+        _search_cache[q] = (now, data, limited, reason)
+    return data, limited, reason
 
 
 def cover_bytes(sid):
@@ -161,7 +172,14 @@ class Handler(BaseHTTPRequestHandler):
                 if not q:
                     return self._send({"error": "missing q"}, 400)
                 try:
-                    self._send({"candidates": search_cached(q)})
+                    data, limited, reason = search_cached(q)
+                    payload = {"candidates": data}
+                    # 被限流时明确告诉页面：这批候选是 suggest 降级的（缺副标题），
+                    # 页面/自愈据此放弃写入，别给书下「豆瓣上确实没有副标题」的错结论
+                    if limited:
+                        payload["limited"] = True
+                        payload["reason"] = reason
+                    self._send(payload)
                 except Exception as e:
                     self._send({"error": "search failed: %s" % e}, 502)
             elif p == "/fetch":
