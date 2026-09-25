@@ -938,16 +938,20 @@
        已有数据，坏封面那次同一个教训）。启动时跑（豆瓣在线才跑），静默写回本地库，
        下次「同步到云端」就带上去。
        三种结果各有其意：详情页有副标题 → 写入；详情页确认没有 → 写空串 ""（=「豆瓣上
-       确实没有」，写空后该书就退出待办，不会再查）；取详情失败（代理掉线/风控）→
-       **不下结论**，保持 null，下次启动再试。不做退避记忆：详情页不受搜索限流影响，
-       失败基本只可能是代理侧临时故障，为它维护一套 localStorage 状态不划算。
+       确实没有」）；取详情失败（代理掉线/风控）→ **不下结论**，保持 null，下次启动再试。
+       不做退避记忆：详情页不受搜索限流影响，失败基本只可能是代理侧临时故障。
+       ⚠ 空串必须带版本号（subV）才算「已确认」：旧版解析读不到 v:subtitle，会把本该有
+       副标题的书误判成空串、并因「非 null」永久退出待办（世界小史 / 游牧时光 的 "" 就是
+       这么来的，见日志）。所以只有 subV === SUB_PARSE_VERSION 的空值才不再重查，其余一律重查。
        只动 store.added，底册书没有副标题覆盖层可用。 */
     var SUBTITLE_HEAL_MAX = 12;   // 每次启动最多查这么多本，避免一上来给豆瓣一波并发
+    var SUB_PARSE_VERSION = 2;    // ⚠ 必须与 cloudflare/worker.js、_douban_fetch.py 的 PARSE_VERSION 同步
     var healRunning = false;
     function healSubtitles() {
       if (healRunning || !doubanOnline) return;
       var todo = (store.added || []).filter(function (b) {
-        if (b.subtitle !== null && b.subtitle !== undefined) return false;
+        if (b.subtitle) return false;                    // 已有副标题
+        if (b.subV === SUB_PARSE_VERSION) return false;  // 当前解析版本已确认「豆瓣上确实没有」
         return /subject\/(\d+)/.test(String(b.doubanUrl || ""));
       }).slice(0, SUBTITLE_HEAL_MAX);
       if (!todo.length) return;
@@ -971,7 +975,8 @@
             /* ⚠ 只有真条目页才敢下结论：风控页/异常页里既没有 title 也没有 v:subtitle，
                误当成「这本书没副标题」就会把 "" 写进库、永久锁死。 */
             if (!d || !d.title) throw new Error("bad payload");
-            b.subtitle = d.subtitle || "";   // 有则填，没有则明确记空（该书随即退出待办）
+            b.subtitle = d.subtitle || "";   // 有则填，没有则明确记空
+            b.subV = d.v;                    // 记下确认时的解析版本；旧缓存无 v → 下轮重查
             changed++;
           })
           .catch(function () {})   // 取不到详情：不下结论，保持 null，下次启动再试
