@@ -858,7 +858,8 @@
       if (ci < 0) ci = title.indexOf(":");
       if (ci > -1) { sub = title.slice(ci + 1).trim(); title = title.slice(0, ci).trim(); }
       var coverSrc = DOUBAN_SVC + "/cover?id=" + encodeURIComponent(String(c.id || ""));
-      var cover = '<img src="' + esc(coverSrc) + '" alt="" ' +
+      // loading=lazy：候选最多 15 条，全部立即取图会白等十几张；只加载滚进视口的那几行
+      var cover = '<img src="' + esc(coverSrc) + '" alt="" loading="lazy" ' +
         'onerror="this.parentNode.classList.add(\'noimg\'); this.remove();">';
       var meta = [c.author_name || "", c.year || ""].filter(function (x) { return x; }).join(" · ");
       return '<div class="add-row db-row" data-sid="' + esc(c.id) + '">' +
