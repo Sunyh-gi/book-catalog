@@ -232,6 +232,10 @@
   .cloud-btn { font-size: 12px; color: #6B6B6B; padding: 3px 8px; border-radius: 5px; }
   .cloud-btn:hover { background: var(--ctrl); color: var(--solid); }
   .cloud-state { font-size: 11px; color: var(--label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* 副标题自愈状态：消息可能较长（离线指引 / 剩余待补），允许折行 */
+  .heal-row { align-items: flex-start; padding-top: 0; }
+  .heal-row .cloud-btn { flex: 0 0 auto; }
+  .heal-state { font-size: 11px; line-height: 15px; color: var(--label); min-width: 0; }
 
   /* —— 云同步弹层（设计稿-05：460 宽 / 分区标题+状态徽标 / 操作区主次分明） —— */
   .cloud-panel { box-sizing: border-box; width: 460px; max-width: calc(100vw - 32px); max-height: 86vh; overflow: auto;
@@ -289,6 +293,10 @@
     <div class="cloud-row">
       <button class="cloud-btn" id="btnCloud">☁ 云同步</button>
       <span class="cloud-state" id="cloudState"></span>
+    </div>
+    <div class="cloud-row heal-row">
+      <button class="cloud-btn" id="btnHeal" title="重新检查缺副标题的书，按豆瓣链接从条目页补齐">检查副标题</button>
+      <span class="heal-state" id="healState"></span>
     </div>
     <div class="sidebar-foot">
       <span id="footUpdated"></span>
@@ -930,42 +938,92 @@
       var hint = document.getElementById("addHint");
       if (hint) hint.textContent = "已匹配版本，可直接加入书库或重新搜索";
     }
-    /* ---------- 副标题启动自愈 ----------
+    /* ---------- 副标题自愈 ----------
        副标题的**主源是豆瓣条目页** <h2 class="subtitle"><span property="v:subtitle">，
        它不受搜索限流影响（搜索被限流时标题只剩书名，拆不出副标题），所以这里直接按
        doubanUrl 里的 sid 调 /fetch 取详情，不再走 /search 按书名匹配 —— 既拿得到，
        也不受限流影响。历史上任何一次「搜索降级」录进来的书都靠它补回（改代码救不了
-       已有数据，坏封面那次同一个教训）。启动时跑（豆瓣在线才跑），静默写回本地库，
-       下次「同步到云端」就带上去。
+       已有数据，坏封面那次同一个教训）。写回本地库，下次「同步到云端」就带上去。
        三种结果各有其意：详情页有副标题 → 写入；详情页确认没有 → 写空串 ""（=「豆瓣上
-       确实没有」）；取详情失败（代理掉线/风控）→ **不下结论**，保持 null，下次启动再试。
-       不做退避记忆：详情页不受搜索限流影响，失败基本只可能是代理侧临时故障。
+       确实没有」，实测 波斯札记 / 世界小史 / 城南旧事 / 一九八四 / 游牧时光 都属此类，
+       是豆瓣本来就没有，不是漏抓）；取详情失败（代理掉线/风控）→ **不下结论**，保持
+       null，下次再试。
        ⚠ 空串必须带版本号（subV）才算「已确认」：旧版解析读不到 v:subtitle，会把本该有
-       副标题的书误判成空串、并因「非 null」永久退出待办（世界小史 / 游牧时光 的 "" 就是
-       这么来的，见日志）。所以只有 subV === SUB_PARSE_VERSION 的空值才不再重查，其余一律重查。
+       副标题的书误判成空串、并因「非 null」永久退出待办。所以只有 subV === SUB_PARSE_VERSION
+       的空值才不再重查，其余一律重查。
+       ⚠ 这个自愈以前是**全程静默**的：豆瓣离线直接 return、队列超过上限被悄悄截断、
+       没有豆瓣链接的书被直接跳过 —— 三种失败在界面上长得一模一样，于是「修了没用」
+       反复发生。现在每一类的数量都写到 #healState 上，并给一个手动触发的按钮。
        只动 store.added，底册书没有副标题覆盖层可用。 */
-    var SUBTITLE_HEAL_MAX = 12;   // 每次启动最多查这么多本，避免一上来给豆瓣一波并发
+    var SUBTITLE_HEAL_MAX = 12;   // 单轮最多查这么多本，避免一上来给豆瓣一波并发；余量会报出来
     var SUB_PARSE_VERSION = 2;    // ⚠ 必须与 cloudflare/worker.js、_douban_fetch.py 的 PARSE_VERSION 同步
     var healRunning = false;
+    var probeDone = false;        // 探测没结束前不说「豆瓣离线」，免得刚打开就闪一句错的
+    function healStat(txt, tip) {
+      var el = document.getElementById("healState");
+      if (!el) return;
+      el.textContent = txt || "";
+      el.title = tip || txt || "";
+    }
+    /* 缺副标题的书分三类：能自愈的（有豆瓣链接、当前解析版本还没确认过）、
+       没豆瓣链接的（自愈永远够不着，只能重新走豆瓣匹配录入）、豆瓣确无的（已确认，不用再查） */
+    function subtitleGaps() {
+      var g = { todo: [], noUrl: 0, confirmed: 0 };
+      (store.added || []).forEach(function (b) {
+        if (b.subtitle) return;
+        if (!/subject\/(\d+)/.test(String(b.doubanUrl || ""))) { g.noUrl++; return; }
+        if (b.subV === SUB_PARSE_VERSION) { g.confirmed++; return; }
+        g.todo.push(b);
+      });
+      return g;
+    }
     function healSubtitles() {
-      if (healRunning || !doubanOnline) return;
-      var todo = (store.added || []).filter(function (b) {
-        if (b.subtitle) return false;                    // 已有副标题
-        if (b.subV === SUB_PARSE_VERSION) return false;  // 当前解析版本已确认「豆瓣上确实没有」
-        return /subject\/(\d+)/.test(String(b.doubanUrl || ""));
-      }).slice(0, SUBTITLE_HEAL_MAX);
-      if (!todo.length) return;
+      if (healRunning) return;
+      var g = subtitleGaps();
+      var tipTail = g.noUrl ? "无豆瓣链接的书自愈够不着（按书名匹配不到条目），只能重新走豆瓣匹配录入。" : "";
+      if (!g.todo.length) {
+        if (!g.confirmed && !g.noUrl) { healStat(""); return; }
+        healStat("副标题已齐" + (g.confirmed ? " · 豆瓣确无 " + g.confirmed : "") +
+          (g.noUrl ? " · 无豆瓣链接 " + g.noUrl : ""),
+          "所有能补的书都查过了。" + tipTail);
+        return;
+      }
+      if (!doubanOnline) {
+        if (!probeDone) {
+          healStat("副标题待补 " + g.todo.length + " 本 · 正在检测豆瓣服务…");
+        } else {
+          healStat("豆瓣离线 · 副标题自愈未运行（" + g.todo.length + " 本待补）",
+            "在「云同步」里填云端代理地址，或启动本机 _douban_server.py，然后点「检查副标题」。" + tipTail);
+        }
+        return;
+      }
       healRunning = true;
-      var changed = 0, i = 0;
+      var batch = g.todo.slice(0, SUBTITLE_HEAL_MAX);
+      var rest = g.todo.length - batch.length;
+      var filled = 0, blank = 0, failed = 0, i = 0;
+      healStat("副标题自愈中… 0/" + batch.length);
       var step = function () {
-        if (i >= todo.length) {
+        if (i >= batch.length) {
           healRunning = false;
-          if (changed) { saveStore(); renderAll(); }
+          if (filled || blank) {
+            saveStore();
+            renderAll();
+            /* renderAll() 只画侧栏/标题/网格，不碰详情卡片；卡片正开着就得自己重画，
+               否则补上的副标题要等你关掉再打开才看得见 */
+            if (detailId) openDetail(detailId);
+          }
+          var msg = "副标题：补上 " + filled;
+          if (blank) msg += " · 豆瓣确无 " + blank;
+          if (failed) msg += " · 失败 " + failed;
+          if (rest) msg += " · 还有 " + rest + " 本待补";
+          if (g.noUrl) msg += " · 无链接 " + g.noUrl;
+          healStat(msg, "补上 " + filled + " 本；" + blank + " 本豆瓣条目页确实没有副标题（不是漏抓）；" +
+            (failed ? failed + " 本取详情失败，下次打开会自动重试；" : "") +
+            (rest ? "还有 " + rest + " 本没轮到，点「检查副标题」继续；" : "") + tipTail);
           return;
         }
-        var b = todo[i++];
+        var b = batch[i++];
         var sid = String(b.doubanUrl).match(/subject\/(\d+)/)[1];
-        var wait = function () { setTimeout(step, 500); };   // 隔开一点，别把豆瓣打急了
         fetch(DOUBAN_SVC + "/fetch?id=" + sid, { mode: "cors" })
           .then(function (r) {
             if (!r.ok) throw new Error("HTTP " + r.status);
@@ -977,41 +1035,59 @@
             if (!d || !d.title) throw new Error("bad payload");
             b.subtitle = d.subtitle || "";   // 有则填，没有则明确记空
             b.subV = d.v;                    // 记下确认时的解析版本；旧缓存无 v → 下轮重查
-            changed++;
+            if (d.subtitle) filled++; else blank++;
           })
-          .catch(function () {})   // 取不到详情：不下结论，保持 null，下次启动再试
-          .then(wait);
+          .catch(function () { failed++; })   // 取不到详情：不下结论，保持 null，下次再试
+          .then(function () {
+            healStat("副标题自愈中… " + i + "/" + batch.length);
+            setTimeout(step, 400);             // 隔开一点，别把豆瓣打急了
+          });
       };
       step();
     }
+    var probeToken = 0;
     function probeDouban() {
       var m = location.search.match(/[?&]svc=([^&]+)/);
-      var list = m ? [decodeURIComponent(m[1])] : [];
-      list.push("http://localhost:8765", "http://127.0.0.1:8765");
-      var cu = doubanCloudUrl();
-      if (cu && list.indexOf(cu) === -1) list.push(cu);   // 本机优先，云端兜底
-      var tryNext = function (i) {
-        if (i >= list.length) return;
-        var base = list[i];
+      var list;
+      if (m) {
+        /* ?svc= 是调试口子：只试它、不兜底，冒烟测试才能稳定复现「离线」 */
+        list = [decodeURIComponent(m[1])];
+      } else {
+        list = ["http://localhost:8765", "http://127.0.0.1:8765"];   // 本机优先
+        var cu = doubanCloudUrl();
+        if (cu && list.indexOf(cu) === -1) list.push(cu);
+      }
+      /* 并行探，谁先回用谁：本机代理是秒回的，本机在线时自然还是本机赢；
+         而本机不在时不必先白等两个 2s 超时 —— 那 4 秒会让自愈晚 4 秒才开始，
+         用户打开页面马上点开一本书，看到的就是「还是没副标题」。 */
+      var token = ++probeToken;
+      var pending = list.length;
+      var finish = function (base, ok) {
+        if (token !== probeToken) return;          // 已有更新的探测在跑，丢弃本次结果
+        if (ok) {
+          probeToken++;                            // 定下来了，其余候选的结果一律作废
+          DOUBAN_SVC = base;
+          doubanOnline = true;
+          probeDone = true;
+          var isLocal = base.indexOf("localhost") > -1 || base.indexOf("127.0.0.1") > -1;
+          var hint = document.getElementById("addHint");
+          if (hint) hint.textContent = "豆瓣在线（" + (isLocal ? "本机" : "云端") + "）· 输入书名或 ISBN 搜索候选版本后自动填充";
+          healSubtitles();
+        } else if (--pending === 0) {
+          probeDone = true;
+          healSubtitles();                         // 全不通 → 由它把「离线」写到 #healState 上
+        }
+      };
+      list.forEach(function (base) {
         var isLocal = base.indexOf("localhost") > -1 || base.indexOf("127.0.0.1") > -1;
         var ctrl = new AbortController();
         /* 本机代理要秒回，2s 足够；云端域名首次含 DNS+TLS 握手（实测冷启动 6s+），给 8s 免得被掐断成「豆瓣离线」 */
         var timer = setTimeout(function () { ctrl.abort(); }, isLocal ? 2000 : 8000);
         fetch(base + "/health", { mode: "cors", signal: ctrl.signal })
           .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (j) {
-            clearTimeout(timer);
-            if (j && j.ok) {
-              DOUBAN_SVC = base;
-              doubanOnline = true;
-              var hint = document.getElementById("addHint");
-              if (hint) hint.textContent = "豆瓣在线（" + (isLocal ? "本机" : "云端") + "）· 输入书名或 ISBN 搜索候选版本后自动填充";
-              healSubtitles();
-            } else { tryNext(i + 1); }
-          })
-          .catch(function () { clearTimeout(timer); tryNext(i + 1); });
-      };
-      tryNext(0);
+          .then(function (j) { clearTimeout(timer); finish(base, !!(j && j.ok)); })
+          .catch(function () { clearTimeout(timer); finish(base, false); });
+      });
     }
     function submitManual() {
       var title = document.getElementById("mTitle").value.trim();
@@ -1157,6 +1233,9 @@
     var CLOUD_DATA = "data/library.json";
     var CLOUD_COVER_DIR = "covers/cloud";
     var CLOUD_PAGES = "https://sunyh-gi.github.io/book-catalog/";
+    /* 云端豆瓣代理地址只能存在 localStorage，不能内置：它是个人域名，_privacy_scan.js 会拦下
+       任何写进公开仓库的域名（index.html 本身就在推送白名单里）。代价是 localStorage 按来源隔离，
+       file:// 与 Pages 域名要各配一次 —— 所以没配时必须在界面上说清楚，不能像以前那样静默不跑。 */
     function cloudCfg() {
       try { return JSON.parse(localStorage.getItem(CLOUD_CFG_KEY)) || null; } catch (e) { return null; }
     }
@@ -1175,7 +1254,12 @@
     function openCloud() {
       var cfg = cloudCfg();
       document.getElementById("cloudToken").value = cfg ? cfg.token : "";
-      document.getElementById("cloudDoubanUrl").value = doubanCloudUrl();
+      /* 没有内置默认地址了：只回填已保存的值，留空就只探本机代理 */
+      var storedUrl = "";
+      try { storedUrl = ((JSON.parse(localStorage.getItem("booklib.doubancloud") || "null") || {}).url) || ""; } catch (e) {}
+      var inp = document.getElementById("cloudDoubanUrl");
+      inp.value = storedUrl;
+      inp.placeholder = "留空则只探本机 http://localhost:8765";
       document.getElementById("cloudSteps").hidden = true;
       document.getElementById("cloudFold").textContent = "▸ 如何生成 Token · 三步说明";
       updateCloudBadges();
@@ -1187,9 +1271,10 @@
       var cfg = cloudCfg();
       var bt = document.getElementById("badgeToken");
       if (bt) { bt.textContent = cfg ? "已配置" : "未配置"; bt.className = "cloud-badge" + (cfg ? "" : " off"); }
-      var url = doubanCloudUrl();
+      var custom = false;
+      try { custom = !!((JSON.parse(localStorage.getItem("booklib.doubancloud") || "null") || {}).url); } catch (e) {}
       var bd = document.getElementById("badgeDouban");
-      if (bd) { bd.textContent = url ? "已配置" : "未配置"; bd.className = "cloud-badge" + (url ? "" : " off"); }
+      if (bd) { bd.textContent = custom ? "自定义" : "未配置"; bd.className = "cloud-badge" + (custom ? "" : " off"); }
       var up = document.getElementById("btnCloudUp");
       if (up) up.disabled = !cfg;
     }
@@ -1202,7 +1287,7 @@
       updateCloudState();
       updateCloudBadges();
       setCloudNote(token ? "✅ Token 已保存（仅存本机浏览器）" : "未配置 Token：同步到云端不可用，恢复云端数据仍可用。");
-      if (doubanUrl) probeDouban();
+      probeDouban();   // 地址可能被改（或清空），重新探一次
     }
     function ghHeaders(cfg) {
       return {
@@ -1593,6 +1678,11 @@
     /* 题材管理弹层 */
     document.getElementById("btnCloseGenre").addEventListener("click", closeGenre);
     document.getElementById("btnCloud").addEventListener("click", openCloud);
+    /* 手动触发副标题自愈：离线时先重探一次（用户可能刚把代理起起来），探到就直接补 */
+    document.getElementById("btnHeal").addEventListener("click", function () {
+      if (doubanOnline) healSubtitles();
+      else { probeDone = false; healSubtitles(); probeDouban(); }
+    });
     document.getElementById("btnCloseCloud").addEventListener("click", closeCloud);
     document.getElementById("btnCloudUp").addEventListener("click", cloudUpload);
     document.getElementById("btnCloudDown").addEventListener("click", cloudRestore);
@@ -1699,6 +1789,7 @@
        要等到下次云同步才清掉，中间一直挂在 localStorage 里。只在真有残留时写回。 */
     if (pruneOverlay()) saveStore();
     renderAll();
+    healSubtitles();   // 先把「几本待补 / 有几本够不着」亮出来，探测结束后再覆盖成结果
     probeDouban();
     updateCloudState();
     cloudAutoLoad();
