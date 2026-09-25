@@ -15,7 +15,7 @@
  *           --into <书库id>  更新已有条目（保留 genre/status/addedAt）
  *           --new            追加新书（默认 status=pending）
  *
- * 零第三方依赖：urllib + re。抓取频率低、单线程，带浏览器 UA。
+ * 零第三方依赖：urllib + re（并行取数只用标准库 concurrent.futures）。抓取频率低，带浏览器 UA。
  * ============================================================ """
 import argparse, html as H, json, pathlib, re, shutil, sys, time, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
