@@ -12,6 +12,7 @@
  * 端点（与云端 Worker 一致，共 5 个）：
  *   GET /health                     -> {"ok": true, "service": "douban-proxy"}
  *   GET /search?q=百年孤独           -> {"candidates": [{id,title,year,author_name,img,...}]}
+ *                                       （search.douban.com 全量版本 + suggest 补充）
  *   GET /fetch?id=6082808           -> 豆瓣条目详情 JSON（与 _douban_cache/<id>.json 同结构）
  *   GET /cover?id=6082808           -> 封面图片字节（服务端带 Referer，绕过豆瓣 418）
  *   GET /save_cover?sid=&book_id=   -> 把封面落到 covers/<book_id>.jpg，并回 dataUrl
@@ -27,7 +28,7 @@
 import base64, json, re, sys, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from _douban_fetch import CACHE, ROOT, UA, http_get, parse_subject
+from _douban_fetch import CACHE, ROOT, UA, http_get, parse_subject, search_subjects
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
 
@@ -85,7 +86,7 @@ def search_cached(q):
     hit = _search_cache.get(q)
     if hit and now - hit[0] < SEARCH_TTL:
         return hit[1]
-    data = do_search(q)
+    data = search_subjects(q)
     _search_cache[q] = (now, data)
     return data
 
@@ -119,25 +120,6 @@ def cover_bytes(sid):
     body = get_bytes(url, referer="https://book.douban.com/")
     f.write_bytes(body)
     return body, "image/jpeg"
-
-
-def do_search(q):
-    """按书名/ISBN 搜豆瓣，返回候选列表（suggest 接口优先，聚合页兜底）。"""
-    q = q.strip()
-    url = "https://book.douban.com/j/subject_suggest?q=" + urllib.parse.quote(q)
-    try:
-        data = json.loads(http_get(url))
-    except Exception:
-        data = []
-    if not isinstance(data, list) or not data:
-        html = http_get("https://www.douban.com/search?cat=1001&q=" + urllib.parse.quote(q))
-        seen, out = set(), []
-        for m in re.finditer(r'sid:\s*(\d+)', html):
-            if m.group(1) not in seen:
-                seen.add(m.group(1))
-                out.append({"id": m.group(1), "title": "", "year": ""})
-        return out[:10]
-    return data[:10]
 
 
 class Handler(BaseHTTPRequestHandler):
