@@ -281,6 +281,14 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
     localStorage.setItem('booklib.v1', JSON.stringify(s));
   });
   await page.reload({ waitUntil: 'load' }); await sleep(400);
+  const stP0 = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('booklib.v1') || '{}');
+    return { cover: Object.keys(s.cover || {}), status: Object.keys(s.status || {}) };
+  });
+  ok('P0 启动即收敛覆盖层（幽灵书残留不必等云同步），且不误删活书条目',
+    stP0.cover.indexOf('b-ghost') === -1 && stP0.status.indexOf('b-ghost') === -1
+    && stP0.cover.indexOf('b-1002') > -1 && stP0.status.indexOf('b-1002') > -1,
+    stP0.cover.join(',') + ' | ' + stP0.status.join(','));
   await page.evaluate(() => {
     const card = [...document.querySelectorAll('.grid .card')].find(c => c.dataset.id === 'b-1002');
     card.querySelector('.cover').click();
