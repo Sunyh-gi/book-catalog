@@ -31,8 +31,8 @@
 import base64, json, re, sys, time, urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from _douban_fetch import (CACHE, ROOT, fetch_image, load_cover_urls, parse_subject,
-                           search_subjects)
+from _douban_fetch import (CACHE, PARSE_VERSION, ROOT, fetch_image, load_cover_urls,
+                           parse_subject, search_subjects)
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
 
@@ -67,13 +67,19 @@ def sweep_cache():
 
 
 def fetch_cached(sid):
-    """详情缓存优先（毫秒级命中），过期/缺失才现抓豆瓣并落盘。"""
+    """详情缓存优先（毫秒级命中），过期/缺失才现抓豆瓣并落盘。
+
+    ⚠ 解析口径版本必须一致：`_douban_cache/<id>.json` 的 24h TTL 是按**旧口径**写的，
+    旧文件里 subtitle 恒为 None（那时只读 #info，而豆瓣把副标题放在页头 v:subtitle）。
+    不校验版本的话，改完解析代码 24h 内读到的仍是旧结果，看起来像「修了没用」。
+    """
     sid = str(sid)
     jf = CACHE / ("%s.json" % sid)
     if jf.exists():
         try:
             d = json.loads(jf.read_text(encoding="utf-8"))
-            if time.time() - (d.get("fetchedAt") or 0) < FETCH_TTL:
+            if (d.get("v") == PARSE_VERSION
+                    and time.time() - (d.get("fetchedAt") or 0) < FETCH_TTL):
                 return d
         except Exception:
             pass
