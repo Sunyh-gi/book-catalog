@@ -28,7 +28,8 @@
 import base64, json, re, sys, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from _douban_fetch import CACHE, ROOT, UA, http_get, parse_subject, search_subjects
+from _douban_fetch import (CACHE, ROOT, UA, http_get, load_cover_urls, parse_subject,
+                           search_subjects)
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
 
@@ -47,7 +48,8 @@ def sweep_cache():
     if not CACHE.exists():
         return 0
     now, n = time.time(), 0
-    targets = list(CACHE.glob("*.json"))
+    # 下划线开头的是旁路缓存（_cover_urls.json 等），不是详情条目，别当过期详情删掉
+    targets = [f for f in CACHE.glob("*.json") if not f.name.startswith("_")]
     cdir = CACHE / "covers"
     if cdir.exists():
         targets += list(cdir.glob("*.jpg"))
@@ -102,18 +104,26 @@ def get_bytes(url, referer=None):
 
 
 def cover_bytes(sid):
-    """返回 (图片字节, content_type)：优先本地缓存，其次现场抓豆瓣封面。"""
+    """返回 (图片字节, content_type)：优先本地缓存，其次现场抓豆瓣封面。
+
+    封面直链的查找顺序（越靠前越省一次 5s 的条目页抓取）：
+    ① 已落盘的封面图 → ② 搜索时顺手记下的直链 → ③ 详情缓存里的 → ④ 现抓条目页
+    """
     sid = str(sid)
     cdir = CACHE / "covers"
     cdir.mkdir(parents=True, exist_ok=True)
     f = cdir / (sid + ".jpg")
     if f.exists():
         return f.read_bytes(), "image/jpeg"
-    jf = CACHE / (sid + ".json")
-    if jf.exists():
-        d = json.loads(jf.read_text(encoding="utf-8"))
-        url = d.get("coverUrl") or ""
-    else:
+    url = load_cover_urls().get(sid) or ""
+    if not url:
+        jf = CACHE / (sid + ".json")
+        if jf.exists():
+            try:
+                url = json.loads(jf.read_text(encoding="utf-8")).get("coverUrl") or ""
+            except Exception:
+                url = ""
+    if not url:
         url = parse_subject(sid).get("coverUrl") or ""
     if not url:
         raise RuntimeError("no cover for subject %s" % sid)
