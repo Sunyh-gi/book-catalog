@@ -258,24 +258,39 @@ def _json_object_at(text, start):
     return None
 
 
-def search_douban_page(q):
-    """search.douban.com 聚合搜索页 → 候选列表（含同名不同版本的全量）。
+# ---------------- 搜索限流（__DATA__.error_info） ----------------
+# 除 PoW 验证页外，豆瓣还有一种「软拦截」：HTTP 200、页面结构正常、window.__DATA__ 也在，
+# 但内容变成 {"total": 0, "error_info": "搜索访问太频繁。", "items": []}。
+# 它既不是异常页也不是验证页，既有检查全放它过去 → search_douban_page 静默返回 0 条
+# → 搜索降级到 subject_suggest（只给最匹配 1 条、标题不带副标题）→ 候选行没冒号可拆
+# → 入库 subtitle: null。表现是「新录的书没副标题」且时好时坏，极易误判成界面问题。
+RATE_LIMIT_DELAYS = (2, 5, 10)   # 命中限流后的退避重试间隔（秒）
 
-    豆瓣的 subject_suggest 只给「最匹配的一条」（搜「波斯札记」只回 2023 版，
-    漏掉 2014 版），而这个页面的 window.__DATA__.items 是完整结果集。
+
+class DoubanRateLimited(RuntimeError):
+    """豆瓣搜索被限流（__DATA__.error_info 非空），退避重试后仍未放行。
+
+    单独一个异常类型，是为了让调用方能把「被限流」和「真的没结果」区分开——
+    两者都当空结果处理的话，就会静默录进没有副标题的书。
     """
-    url = ("https://search.douban.com/book/subject_search?search_text=%s&cat=1001"
-           % urllib.parse.quote(q))
+
+
+def _search_page_json(url):
+    """抓聚合页并解出 window.__DATA__ 的 dict；拿不到（结构变了/被拦）返回 None。"""
     m = re.search(r"window\.__DATA__\s*=\s*(\{.*)", http_get(url), re.S)
     if not m:
-        return []
+        return None
     raw = _json_object_at(m.group(1), 0)
     if not raw:
-        return []
+        return None
     try:
-        data = json.loads(raw)
+        return json.loads(raw)
     except ValueError:
-        return []
+        return None
+
+
+def _page_candidates(data):
+    """__DATA__ → 候选列表。"""
     out = []
     for it in (data.get("items") or []):
         sid = str(it.get("id") or "").strip()
@@ -301,6 +316,30 @@ def search_douban_page(q):
     return out
 
 
+def search_douban_page(q, retries=RATE_LIMIT_DELAYS):
+    """search.douban.com 聚合搜索页 → 候选列表（含同名不同版本的全量）。
+
+    豆瓣的 subject_suggest 只给「最匹配的一条」（搜「波斯札记」只回 2023 版，
+    漏掉 2014 版），而这个页面的 window.__DATA__.items 是完整结果集。
+
+    ⚠ 命中限流（error_info 非空）时按 retries 退避重试，重试仍失败抛
+    DoubanRateLimited —— 别把「被限流」当成「没结果」，那样会静默录进没副标题的书。
+    """
+    url = ("https://search.douban.com/book/subject_search?search_text=%s&cat=1001"
+           % urllib.parse.quote(q))
+    info = ""
+    for i in range(len(retries) + 1):
+        if i:
+            time.sleep(retries[i - 1])
+        data = _search_page_json(url)
+        if data is None:
+            return []
+        info = str(data.get("error_info") or "").strip()
+        if not info:
+            return _page_candidates(data)
+    raise DoubanRateLimited("豆瓣搜索限流：%s（退避重试 %d 次仍失败）" % (info, len(retries)))
+
+
 def suggest_books(q):
     """subject_suggest（输入联想）→ 只取书籍条目。"""
     s = json.loads(http_get("https://book.douban.com/j/subject_suggest?q=" + urllib.parse.quote(q)))
@@ -310,7 +349,7 @@ def suggest_books(q):
     return [x for x in s if not x.get("type") or x.get("type") == "b"]
 
 
-def search_subjects(q, limit=15):
+def search_subjects(q, limit=15, status=None):
     """搜豆瓣书籍候选，合并三个入口并去重（顺序即相关度：聚合页在前）。
 
     ① search.douban.com 聚合页：唯一能一次拿到全部同名版本
@@ -319,9 +358,14 @@ def search_subjects(q, limit=15):
 
     ⚠ ①②**必须并行**：豆瓣单请求就要 5s 上下（服务端慢，不是传输量），
     串行会把一次搜索拖到 10s。并行的代价是对豆瓣多一个并发请求，可接受。
+
+    status：可选 dict，回填 {"limited": bool, "reason": str}。被限流时聚合页缺席、
+    只剩 suggest 的降级候选（缺副标题），调用方**必须**据此放弃写入与缓存——
+    否则会把「被限流」误当「豆瓣上确实没有副标题」。
     """
     q = q.strip()
     out, seen = [], set()
+    limited, reason = False, ""
 
     def add(items):
         for it in items:
@@ -336,6 +380,8 @@ def search_subjects(q, limit=15):
         for f in (f_page, f_sugg):
             try:
                 add(f.result())
+            except DoubanRateLimited as e:
+                limited, reason = True, str(e)
             except Exception:
                 pass
     if not out:
@@ -350,6 +396,9 @@ def search_subjects(q, limit=15):
             pass
     out = out[:limit]
     remember_cover_urls(out)
+    if status is not None:
+        status["limited"] = limited
+        status["reason"] = reason
     return out
 
 
