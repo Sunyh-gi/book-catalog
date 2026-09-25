@@ -195,6 +195,12 @@
   .d-meta .m-row { display: flex; gap: 12px; }
   .d-meta .m-label { flex: 0 0 56px; font-size: 12px; line-height: 20px; color: var(--assist); }
   .d-meta .m-value { flex: 1; font-size: 13px; line-height: 20px; color: var(--ink); word-break: break-all; }
+  /* 题材下拉：外观对齐 m-value 文本，仅露出可编辑的提示（下划虚线） */
+  .d-meta .m-select { flex: 1; min-width: 0; box-sizing: border-box; padding: 0;
+    border: 0; border-bottom: 1px dashed var(--line); border-radius: 0; background: transparent;
+    font: inherit; font-size: 13px; line-height: 20px; color: var(--ink); cursor: pointer;
+    -webkit-appearance: none; appearance: none; }
+  .d-meta .m-select:hover, .d-meta .m-select:focus { border-bottom-color: var(--assist); outline: none; }
   .d-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
   .d-head h2 { flex: 1; min-width: 0; }
   .d-acts { display: flex; gap: 14px; flex: 0 0 auto; }
@@ -1313,6 +1319,45 @@
 
     /* ---------- 图书详情弹层 ---------- */
     var detailId = null;
+    /* 题材行：详情弹层里可直接改分类。候选 = 题材字典 ∪ 书里出现过的题材 ∪ 当前值
+       （字典项可能已从「题材管理」里删掉，但书还挂着它，得能原样显示出来）。
+       额外给一个空选项「未分类」——录错分类时可以清回未分类，而不是被迫挑一个。 */
+    function genreRowHTML(b) {
+      var cur = genreOf(b);
+      var opts = [];
+      allGenres().forEach(function (g) { if (g && opts.indexOf(g) === -1) opts.push(g); });
+      allBooks().forEach(function (x) {
+        var g = genreOf(x);
+        if (g && opts.indexOf(g) === -1) opts.push(g);
+      });
+      if (cur && opts.indexOf(cur) === -1) opts.push(cur);
+      var html = '<option value="">未分类</option>' + opts.map(function (g) {
+        return '<option value="' + esc(g) + '"' + (g === cur ? ' selected' : '') + '>' + esc(g) + '</option>';
+      }).join('');
+      return '<div class="m-row"><span class="m-label">题材</span>' +
+        '<select class="m-select" id="dGenre" title="修改这本书的题材分类">' + html + '</select></div>';
+    }
+    function setBookGenre(id, val) {
+      var b = findBook(id);
+      if (!b) return;
+      var cur = genreOf(b);
+      if (val === cur) return;
+      var prev = store.g.map[id];
+      /* ⚠ 清回「未分类」必须写入空串，不能删键：genreOf 在覆盖层缺失时会回落到
+         b.genre，删掉键等于「没改过」，录错分类的书就清不掉了（题材管理的删除
+         逻辑同样写 ""）。反过来，选中的恰好是这本书原本的题材时就不留冗余覆盖。 */
+      if (val && val === (b.genre || "")) delete store.g.map[id];
+      else store.g.map[id] = val;
+      // 存不进去就回滚，否则下拉显示已改、刷新后又变回去
+      if (!saveStore()) {
+        if (prev === undefined) delete store.g.map[id]; else store.g.map[id] = prev;
+        var sel = document.getElementById("dGenre");
+        if (sel) sel.value = cur;
+        return;
+      }
+      renderAll();
+    }
+
     function openDetail(id) {
       var b = findBook(id);
       if (!b) return;
@@ -1336,7 +1381,7 @@
       var metaHTML = meta.map(function (m) {
         return '<div class="m-row"><span class="m-label">' + m[0] +
           '</span><span class="m-value">' + esc(m[1]) + '</span></div>';
-      }).join('');
+      }).join('') + genreRowHTML(b);
       var acts = '<button class="d-linkish" id="dUpload" title="选择本地图片作为封面">上传封面</button>' +
         '<input type="file" id="dUploadInput" accept="image/*" hidden>' +
         '<button class="d-linkish" id="dDel">删除</button>';
@@ -1425,6 +1470,7 @@
       }
     });
     document.getElementById('detailPanel').addEventListener('change', function (e) {
+      if (e.target.id === 'dGenre' && detailId) { setBookGenre(detailId, e.target.value); return; }
       if (e.target.id !== 'dUploadInput' || !detailId) return;
       var f = e.target.files && e.target.files[0];
       if (!f) return;
