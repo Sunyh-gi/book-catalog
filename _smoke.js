@@ -365,6 +365,24 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
 
   await page.evaluate(() => localStorage.removeItem('booklib.v1'));
 
+  /* ---------- 场景 S：云同步弹层能真正打开 ----------
+     光做语法检查抓不到这类 bug：openCloud() 里引用了已删除的常量，函数在
+     `cloudOverlay.hidden = false` 之前就抛 ReferenceError —— 弹层根本打不开，
+     于是「云端代理地址」永远没处可填，自愈一直判定豆瓣离线、静默不跑。
+     断言必须落在「弹层可见 + 初始化跑到底」，不能只看有没有报错。 */
+  await page.click('#btnCloud'); await sleep(300);
+  const stS = await page.evaluate(() => ({
+    open: !document.getElementById('cloudOverlay').hidden,
+    ph: document.getElementById('cloudDoubanUrl').placeholder,
+    badge: document.getElementById('badgeDouban').textContent,
+    stepsHidden: document.getElementById('cloudSteps').hidden,
+  }));
+  ok('S1 云同步弹层可打开（openCloud 未中途抛错）', stS.open, JSON.stringify(stS));
+  ok('S2 弹层初始化跑到底（地址框有提示语 + 代理徽标已渲染 + 三步说明已折叠）',
+    !!stS.ph && !!stS.badge && stS.stepsHidden === true, JSON.stringify(stS));
+  await page.keyboard.press('Escape'); await sleep(200);
+  ok('S3 Esc 可关闭云同步弹层', await page.evaluate(() => document.getElementById('cloudOverlay').hidden));
+
   /* ---------- 场景 F：健壮性 ---------- */
   /* 过滤豆瓣离线探测（svc=59999）产生的浏览器网络日志噪音（ERR_CONNECTION_REFUSED），
      其余 pageerror / console error 仍视为真实错误 */
