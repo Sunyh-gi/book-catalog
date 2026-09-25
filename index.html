@@ -890,8 +890,10 @@
       var tryNext = function (i) {
         if (i >= list.length) return;
         var base = list[i];
+        var isLocal = base.indexOf("localhost") > -1 || base.indexOf("127.0.0.1") > -1;
         var ctrl = new AbortController();
-        var timer = setTimeout(function () { ctrl.abort(); }, 2000);
+        /* 本机代理要秒回，2s 足够；云端域名首次含 DNS+TLS 握手（实测冷启动 6s+），给 8s 免得被掐断成「豆瓣离线」 */
+        var timer = setTimeout(function () { ctrl.abort(); }, isLocal ? 2000 : 8000);
         fetch(base + "/health", { mode: "cors", signal: ctrl.signal })
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (j) {
@@ -899,9 +901,8 @@
             if (j && j.ok) {
               DOUBAN_SVC = base;
               doubanOnline = true;
-              var local = base.indexOf("localhost") > -1 || base.indexOf("127.0.0.1") > -1;
               var hint = document.getElementById("addHint");
-              if (hint) hint.textContent = "豆瓣在线（" + (local ? "本机" : "云端") + "）· 输入书名或 ISBN 搜索候选版本后自动填充";
+              if (hint) hint.textContent = "豆瓣在线（" + (isLocal ? "本机" : "云端") + "）· 输入书名或 ISBN 搜索候选版本后自动填充";
             } else { tryNext(i + 1); }
           })
           .catch(function () { clearTimeout(timer); tryNext(i + 1); });
