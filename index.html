@@ -190,17 +190,17 @@
   .d-info { flex: 1; min-width: 0; }
   .d-info h2 { font-size: 20px; font-weight: 500; color: var(--ink); line-height: 28px; }
   .d-sub { margin-top: 4px; font-size: 13px; line-height: 20px; color: var(--assist); }
-  .d-hairline { height: 1px; background: var(--line); margin: 14px 0; }
-  .d-meta { display: flex; flex-direction: column; gap: 10px; }
+  .d-hairline { height: 1px; background: var(--line); margin: 12px 0; }
+  .d-meta { display: flex; flex-direction: column; gap: 6px; }
   .d-meta .m-row { display: flex; gap: 12px; }
   .d-meta .m-label { flex: 0 0 56px; font-size: 12px; line-height: 20px; color: var(--assist); }
   .d-meta .m-value { flex: 1; font-size: 13px; line-height: 20px; color: var(--ink); word-break: break-all; }
-  /* 题材下拉：外观对齐 m-value 文本，仅露出可编辑的提示（下划虚线） */
+  /* 题材下拉：外观与 m-value 文本完全一致，不画任何边框（hover/focus 也不浮出下划线） */
   .d-meta .m-select { flex: 1; min-width: 0; box-sizing: border-box; padding: 0;
-    border: 0; border-bottom: 1px dashed var(--line); border-radius: 0; background: transparent;
+    border: 0; border-radius: 0; background: transparent;
     font: inherit; font-size: 13px; line-height: 20px; color: var(--ink); cursor: pointer;
     -webkit-appearance: none; appearance: none; }
-  .d-meta .m-select:hover, .d-meta .m-select:focus { border-bottom-color: var(--assist); outline: none; }
+  .d-meta .m-select:focus { outline: none; }
   .d-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
   .d-head h2 { flex: 1; min-width: 0; }
   .d-acts { display: flex; gap: 14px; flex: 0 0 auto; }
@@ -868,7 +868,10 @@
       var cover = '<img src="' + esc(coverSrc) + '" alt="" loading="lazy" ' +
         'onerror="this.parentNode.classList.add(\'noimg\'); this.remove();">';
       var meta = [c.author_name || "", c.year || ""].filter(function (x) { return x; }).join(" · ");
-      return '<div class="add-row db-row" data-sid="' + esc(c.id) + '">' +
+      /* data-sub 把「书名 : 副标题」拆出的副标题带进 DOM：豆瓣详情页的 #info 常没有
+         「副标题」字段（如《阿拉伯的劳伦斯》只有「原作名」），入库若只认那个字段，
+         用户在候选行看到的副标题就会丢，详情卡便不再显示 */
+      return '<div class="add-row db-row" data-sid="' + esc(c.id) + '" data-sub="' + esc(sub) + '">' +
         '<div class="add-cover">' + cover + '</div>' +
         '<div class="add-info"><h4>' + esc(title) +
         (sub ? '<span class="db-sub">' + esc(sub) + '</span>' : '') + '</h4>' +
@@ -1559,6 +1562,7 @@
       var row = btn.closest(".db-row");
       if (!row) return;
       var sid = row.dataset.sid;
+      var sub = row.dataset.sub || "";
       var all = document.querySelectorAll("#addResults .db-pick");
       for (var i = 0; i < all.length; i++) {
         all[i].disabled = false; all[i].textContent = "选择"; all[i].classList.remove("picked");
@@ -1568,6 +1572,8 @@
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (!d || d.error) throw new Error((d && d.error) || "无响应");
+          // 详情页没给副标题时，用候选标题拆出来的补上（与候选行显示保持一致）
+          if (!d.subtitle) d.subtitle = sub || null;
           selectedDouban = d;
           fillForm(d);
           btn.textContent = "已选择";
