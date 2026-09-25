@@ -8,9 +8,9 @@ echo.
 REM ASCII only on purpose: this file is published, and non-ASCII text breaks
 REM cmd.exe parsing whenever the console codepage is not UTF-8 (chcp can fail
 REM when there is no real console, e.g. launched from a script or CI).
-REM Interpreter lookup order: managed runtime -> py launcher -> python on PATH.
+REM Interpreter lookup order: per-user Python 3 install -> py launcher -> python on PATH.
 set "PYEXE="
-for /d %%D in ("%LOCALAPPDATA%\Loomy\python-runtime\*") do if not defined PYEXE if exist "%%D\python.exe" set "PYEXE=%%D\python.exe"
+for /d %%D in ("%LOCALAPPDATA%\Programs\Python\Python3*") do if not defined PYEXE if exist "%%D\python.exe" set "PYEXE=%%D\python.exe"
 if defined PYEXE goto run
 for /f "delims=" %%P in ('where py 2^>nul') do if not defined PYEXE set "PYEXE=%%P"
 if defined PYEXE goto run
