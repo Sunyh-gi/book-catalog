@@ -368,7 +368,7 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   /* ---------- 场景 S：云同步弹层能真正打开 ----------
      光做语法检查抓不到这类 bug：openCloud() 里引用了已删除的常量，函数在
      `cloudOverlay.hidden = false` 之前就抛 ReferenceError —— 弹层根本打不开，
-     于是「云端代理地址」永远没处可填，自愈一直判定豆瓣离线、静默不跑。
+     于是「云端代理地址」永远没处可填，页面只能一直判豆瓣离线。
      断言必须落在「弹层可见 + 初始化跑到底」，不能只看有没有报错。 */
   await page.click('#btnCloud'); await sleep(300);
   const stS = await page.evaluate(() => ({
@@ -637,13 +637,13 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   });
   await page2.reload({ waitUntil: 'load' });
   await sleep(600);
-  const limHeal = await page2.evaluate(() => {
+  const limSub = await page2.evaluate(() => {
     var parsed = JSON.parse(localStorage.getItem('booklib.v1') || '{}');
     var b = (parsed.added || []).filter(function (x) { return x.id === 'b-lim-2'; })[0];
     return b ? b.subtitle : 'MISSING';
   });
   ok('R1 搜索限流不影响副标题（补丁表离线生效，与限流彻底解耦）',
-    limHeal === '中国政府与经济发展', JSON.stringify(limHeal));
+    limSub === '中国政府与经济发展', JSON.stringify(limSub));
   await page2.click('#btnAdd'); await sleep(250);
   await page2.type('#addTitle', '限流测试书'); await sleep(100);
   await page2.click('#btnSearchDouban'); await sleep(900);
