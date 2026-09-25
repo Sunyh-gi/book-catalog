@@ -891,8 +891,8 @@
         });
     }
     /* 豆瓣搜索结果标题形如「可能性的艺术 : 比较政治学30讲」（分隔符是带空格的半角冒号）。
-       副标题的唯一来源就是这里——条目页 #info 里根本没有「副标题」字段，
-       /fetch 永远回 subtitle: null。候选行与启动自愈共用这一份拆分逻辑。 */
+       只给候选行做展示、并在 /fetch 没给副标题时兜底；入库副标题的主源是条目页的
+       v:subtitle（见 parse_subject）。搜索被限流时标题只剩书名，这里就拆不出东西。 */
     function splitTitleSub(t) {
       var s = String(t || "");
       var ci = s.indexOf("：");
@@ -908,9 +908,7 @@
       var cover = '<img src="' + esc(coverSrc) + '" alt="" loading="lazy" ' +
         'onerror="this.parentNode.classList.add(\'noimg\'); this.remove();">';
       var meta = [c.author_name || "", c.year || ""].filter(function (x) { return x; }).join(" · ");
-      /* data-sub 把「书名 : 副标题」拆出的副标题带进 DOM：豆瓣详情页的 #info 常没有
-         「副标题」字段（如《阿拉伯的劳伦斯》只有「原作名」），入库若只认那个字段，
-         用户在候选行看到的副标题就会丢，详情卡便不再显示 */
+      /* data-sub 把候选行拆出的副标题带进 DOM，选中时作为 /fetch 结果的兜底 */
       return '<div class="add-row db-row" data-sid="' + esc(c.id) + '" data-sub="' + esc(sub) + '">' +
         '<div class="add-cover">' + cover + '</div>' +
         '<div class="add-info"><h4>' + esc(title) +
@@ -933,67 +931,50 @@
       if (hint) hint.textContent = "已匹配版本，可直接加入书库或重新搜索";
     }
     /* ---------- 副标题启动自愈 ----------
-       副标题只能从搜索结果标题拆（豆瓣条目页没有这个字段），所以历史上任何一次
-       「本地代理退化 / 候选行没冒号」录进来的书，subtitle 会永久缺失——改代码救不了
-       已有数据（坏封面那次同一个教训）。启动时（豆瓣在线才跑）按 doubanUrl 里的 sid
-       精确匹配回填一次，静默写回本地库，下次「同步到云端」就带上去。
-       四种结果各有其意：查到副标题 → 写入；查到该条目但标题没冒号 → 写空串
-       （=「豆瓣上确实没有」，免得每次启动都重查一遍）；没匹配到 sid → 保持 null 并记时间戳，
-       24h 后再试；**被限流 → 整轮中止，既不写也不记**（降级候选没有副标题，写空串等于
-       永久锁死，记历史等于 24h 内真不补了）。只动 store.added，底册书没有副标题覆盖层可用。 */
+       副标题的**主源是豆瓣条目页** <h2 class="subtitle"><span property="v:subtitle">，
+       它不受搜索限流影响（搜索被限流时标题只剩书名，拆不出副标题），所以这里直接按
+       doubanUrl 里的 sid 调 /fetch 取详情，不再走 /search 按书名匹配 —— 既拿得到，
+       也不受限流影响。历史上任何一次「搜索降级」录进来的书都靠它补回（改代码救不了
+       已有数据，坏封面那次同一个教训）。启动时跑（豆瓣在线才跑），静默写回本地库，
+       下次「同步到云端」就带上去。
+       三种结果各有其意：详情页有副标题 → 写入；详情页确认没有 → 写空串 ""（=「豆瓣上
+       确实没有」，写空后该书就退出待办，不会再查）；取详情失败（代理掉线/风控）→
+       **不下结论**，保持 null，下次启动再试。不做退避记忆：详情页不受搜索限流影响，
+       失败基本只可能是代理侧临时故障，为它维护一套 localStorage 状态不划算。
+       只动 store.added，底册书没有副标题覆盖层可用。 */
     var SUBTITLE_HEAL_MAX = 12;   // 每次启动最多查这么多本，避免一上来给豆瓣一波并发
-    var HEAL_HISTORY_KEY = "booklib.healHistory";
-    var HEAL_RETRY_MS = 24 * 3600 * 1000;   // 查过但没结论的书，24h 内不再重查
     var healRunning = false;
-    function loadHealHistory() {
-      try { return JSON.parse(localStorage.getItem(HEAL_HISTORY_KEY) || "{}") || {}; }
-      catch (e) { return {}; }
-    }
-    function saveHealHistory(h) {
-      try { localStorage.setItem(HEAL_HISTORY_KEY, JSON.stringify(h)); } catch (e) {}
-    }
     function healSubtitles() {
       if (healRunning || !doubanOnline) return;
-      var history = loadHealHistory();
-      var now = Date.now();
       var todo = (store.added || []).filter(function (b) {
         if (b.subtitle !== null && b.subtitle !== undefined) return false;
-        var m = String(b.doubanUrl || "").match(/subject\/(\d+)/);
-        if (!b.title || !m) return false;
-        /* 24h 退避：查过但没匹配到 sid 的书（比如书名对不上）每次都重查，等于每次启动
-           都给豆瓣白打一遍，正是限流的诱因。查过就记时间戳，隔天再试。 */
-        return now - (history[m[1]] || 0) > HEAL_RETRY_MS;
+        return /subject\/(\d+)/.test(String(b.doubanUrl || ""));
       }).slice(0, SUBTITLE_HEAL_MAX);
       if (!todo.length) return;
       healRunning = true;
-      var changed = 0, histChanged = false, i = 0, stopped = false;
+      var changed = 0, i = 0;
       var step = function () {
-        if (stopped || i >= todo.length) {
+        if (i >= todo.length) {
           healRunning = false;
-          if (histChanged) saveHealHistory(history);
           if (changed) { saveStore(); renderAll(); }
           return;
         }
         var b = todo[i++];
         var sid = String(b.doubanUrl).match(/subject\/(\d+)/)[1];
         var wait = function () { setTimeout(step, 500); };   // 隔开一点，别把豆瓣打急了
-        fetch(DOUBAN_SVC + "/search?q=" + encodeURIComponent(b.title), { mode: "cors" })
-          .then(function (r) { return r.json(); })
-          .then(function (j) {
-            /* 被限流：这一轮的候选是 suggest 降级的，既不能写空串（会永久锁死「没副标题」），
-               也不该记历史（不然 24h 内真的不再补了）。整轮中止，下次启动重来。 */
-            if (j && j.limited) { stopped = true; return; }
-            history[sid] = Date.now();
-            histChanged = true;
-            var hit = (j && j.candidates || []).filter(function (c) {
-              return String(c.id) === sid;
-            })[0];
-            if (!hit) return;                                 // 没匹配到，不下结论
-            var sub = splitTitleSub(hit.title).sub;
-            b.subtitle = sub || "";                           // 有则填，没有则明确记空
+        fetch(DOUBAN_SVC + "/fetch?id=" + sid, { mode: "cors" })
+          .then(function (r) {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.json();
+          })
+          .then(function (d) {
+            /* ⚠ 只有真条目页才敢下结论：风控页/异常页里既没有 title 也没有 v:subtitle，
+               误当成「这本书没副标题」就会把 "" 写进库、永久锁死。 */
+            if (!d || !d.title) throw new Error("bad payload");
+            b.subtitle = d.subtitle || "";   // 有则填，没有则明确记空（该书随即退出待办）
             changed++;
           })
-          .catch(function () {})
+          .catch(function () {})   // 取不到详情：不下结论，保持 null，下次启动再试
           .then(wait);
       };
       step();
