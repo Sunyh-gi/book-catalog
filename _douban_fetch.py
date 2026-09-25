@@ -17,7 +17,8 @@
  *
  * 零第三方依赖：urllib + re（并行取数只用标准库 concurrent.futures）。抓取频率低，带浏览器 UA。
  * ============================================================ """
-import argparse, html as H, json, pathlib, re, shutil, sys, time, urllib.parse, urllib.request
+import argparse, hashlib, html as H, http.cookiejar, json, pathlib, re, shutil, sys
+import threading, time, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 UA = {
@@ -32,15 +33,68 @@ LABELS = ["作者", "译者", "编者", "出版社", "出品方", "副标题", "
           "出版年", "页数", "定价", "装帧", "丛书", "ISBN", "统一书号"]
 
 
+# ---------------- 反爬验证（sec.douban.com 的 PoW 页） ----------------
+# search.douban.com 聚合页会对本机出口回一个 3KB 的「点我继续浏览」页：
+# 表单里带 tok/cha，要求算出 nonce 使 sha512(cha + nonce) 的前 4 个十六进制位为 0，
+# POST 回 /c 换 dbsawcv1 cookie。不过这一关，聚合页永远拿不到 window.__DATA__ ——
+# search_douban_page 静默返回 0 条，搜索整体退化成 suggest（只有 1 条、没有副标题、
+# 同名版本全丢），页面表现就是「详情卡没有副标题」「波斯札记只显示 1 个版本」。
+# 全程 0.03s 即可解出，且 cookie 存进 jar 后所有请求都不再被拦。
+_COOKIES = http.cookiejar.CookieJar()
+_OPENER = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(_COOKIES))
+_SEC_LOCK = threading.Lock()
+_SEC_FORM_RE = re.compile(r'<form[^>]*action="([^"]*)"[^>]*>(.*?)</form>', re.S | re.I)
+_SEC_FIELD_RE = re.compile(r'name="(tok|cha|sol|red)"[^>]*value="([^"]*)"', re.I)
+SEC_DIFFICULTY = 4
+
+
+def is_sec_page(text):
+    """是否是 sec.douban.com 的「点我继续浏览」验证页。"""
+    return "点我继续浏览" in text or ('name="cha"' in text and 'id="sec"' in text)
+
+
+def solve_sec(cha, difficulty=SEC_DIFFICULTY):
+    """找 nonce 使 sha512(cha + nonce) 前 difficulty 位为 0（对应页面里的 process()）。"""
+    target = "0" * difficulty
+    nonce = 0
+    while True:
+        nonce += 1
+        if hashlib.sha512((cha + str(nonce)).encode()).hexdigest()[:difficulty] == target:
+            return nonce
+
+
+def pass_sec_challenge(text, base_url):
+    """命中验证页则解 PoW 并 POST 回 /c，cookie 落进 _COOKIES；成功返回 True。"""
+    m = _SEC_FORM_RE.search(text)
+    if not m:
+        return False
+    fields = dict(_SEC_FIELD_RE.findall(m.group(2)))
+    if "cha" not in fields or "tok" not in fields:
+        return False
+    fields["sol"] = str(solve_sec(fields["cha"]))
+    action = urllib.parse.urljoin(base_url, m.group(1))
+    body = urllib.parse.urlencode(fields).encode()
+    # 并行搜索时两个线程可能同时撞上验证页，串行化避免重复解/互相覆盖 cookie
+    with _SEC_LOCK:
+        req = urllib.request.Request(action, data=body, headers=dict(
+            UA, **{"Content-Type": "application/x-www-form-urlencoded", "Referer": base_url}))
+        with _OPENER.open(req, timeout=20) as r:
+            r.read()
+    return True
+
+
 def http_get(url, tries=2):
     last = None
     for i in range(tries):
         try:
-            req = urllib.request.Request(url, headers=UA)
-            with urllib.request.urlopen(req, timeout=15) as r:
+            with _OPENER.open(urllib.request.Request(url, headers=UA), timeout=15) as r:
                 text = r.read().decode("utf-8", "ignore")
+                final = r.url
             if "有异常请求" in text:
                 raise RuntimeError("豆瓣反爬拦截（异常请求页）")
+            if is_sec_page(text) and pass_sec_challenge(text, final):
+                with _OPENER.open(urllib.request.Request(url, headers=UA), timeout=15) as r2:
+                    text = r2.read().decode("utf-8", "ignore")
             return text
         except Exception as e:
             last = e
