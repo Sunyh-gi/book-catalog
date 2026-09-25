@@ -388,13 +388,25 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
           res.end(body);
         };
         if (u.pathname === '/health') return send({ ok: true });
-        if (u.pathname === '/search') return send({ candidates: [
-          { id: '6082808', title: '百年孤独', year: '2011', author_name: '[哥伦比亚] 加西亚·马尔克斯',
-            pic: 'https://img9.doubanio.com/view/subject/s/public/s9062104.jpg' },
-          { id: '70001', title: '百年孤独（另一版本） : 纪念版', year: '2020', author_name: '测试作者',
-            abstract: '测试作者 / 测试出版社 / 2020-5 / 45.00元',
-            pic: 'https://img9.doubanio.com/view/subject/s/public/s9062104.jpg' },
-        ] });
+        if (u.pathname === '/search') {
+          /* 场景 Q（副标题启动自愈）用独立关键词返回独立候选，避免污染场景 H 的断言 */
+          var q = u.searchParams.get('q') || '';
+          if (q.indexOf('自愈测试书') > -1) return send({ candidates: [
+            { id: '99991', title: '自愈测试书 : 自愈副标题', year: '2020', author_name: '测试作者',
+              abstract: '测试作者 / 测试出版社 / 2020-5 / 45.00元' },
+          ] });
+          if (q.indexOf('无副标题书') > -1) return send({ candidates: [
+            { id: '99992', title: '无副标题书', year: '2020', author_name: '测试作者',
+              abstract: '测试作者 / 测试出版社 / 2020-5 / 45.00元' },
+          ] });
+          return send({ candidates: [
+            { id: '6082808', title: '百年孤独', year: '2011', author_name: '[哥伦比亚] 加西亚·马尔克斯',
+              pic: 'https://img9.doubanio.com/view/subject/s/public/s9062104.jpg' },
+            { id: '70001', title: '百年孤独（另一版本） : 纪念版', year: '2020', author_name: '测试作者',
+              abstract: '测试作者 / 测试出版社 / 2020-5 / 45.00元',
+              pic: 'https://img9.doubanio.com/view/subject/s/public/s9062104.jpg' },
+          ] });
+        }
         if (u.pathname === '/cover') {
           // 1x1 透明 PNG：让候选行封面真的加载成功，好断言 img 的 loading 属性
           // （返回 404 会触发页面 onerror 把 img 移除，就查不到 loading 了）
@@ -540,6 +552,41 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   ok('H9 在线路径无 JS 报错', err2.filter(function (e) {
     return e.indexOf('Failed to load resource') === -1;
   }).length === 0, err2.join(' | ').slice(0, 300));
+
+  /* ---------- 场景 Q：副标题启动自愈 ----------
+     历史数据里那些 subtitle=null 的书（录的时候本地代理退化成 suggest，候选行没冒号可拆）
+     改代码救不了，所以启动时按 doubanUrl 里的 sid 精确匹配回填。三条断言锁死三种结果：
+     查到副标题 → 写入；查到该条目但标题没冒号 → 写空串（=「豆瓣上确实没有」，免得每次
+     启动重查一遍）；没匹配到 sid → 保持 null，下次启动再试。 */
+  /* index.html 的整段脚本包在 IIFE 里（"use strict"），store/saveStore 都不是全局，
+     只能走 localStorage 注入 + 回读，跟场景 H 的 FIXTURE 用法一致 */
+  await page2.evaluate(() => {
+    localStorage.setItem('booklib.v1', JSON.stringify({
+      status: {}, g: { list: null, map: {} }, cover: {}, deleted: [],
+      added: [
+        { id: 'b-heal-1', title: '自愈测试书', author: '', subtitle: null,
+          doubanUrl: 'https://book.douban.com/subject/99991/' },
+        { id: 'b-heal-2', title: '无副标题书', author: '', subtitle: null,
+          doubanUrl: 'https://book.douban.com/subject/99992/' },
+        { id: 'b-heal-3', title: '查不到的书', author: '', subtitle: null,
+          doubanUrl: 'https://book.douban.com/subject/88888/' },
+      ],
+    }));
+  });
+  await page2.reload({ waitUntil: 'load' });
+  await sleep(4000);   // 3 本 × 500ms 间隔 + 各自 fetch
+  const healed = await page2.evaluate(() => {
+    var parsed = JSON.parse(localStorage.getItem('booklib.v1') || '{}');
+    var get = function (id) {
+      return (parsed.added || []).filter(function (b) { return b.id === id; })[0];
+    };
+    return { sub: get('b-heal-1').subtitle, blank: get('b-heal-2').subtitle,
+             miss: get('b-heal-3').subtitle };
+  });
+  ok('Q1 启动自愈回填副标题', healed.sub === '自愈副标题', JSON.stringify(healed));
+  ok('Q2 豆瓣确无副标题则记空串（下次不再重查）', healed.blank === '', JSON.stringify(healed));
+  ok('Q3 未匹配到 sid 保持 null（下次启动再试）', healed.miss === null, JSON.stringify(healed));
+
   await page2.evaluate(() => localStorage.removeItem('booklib.v1'));
   await page2.close();
   mock.close();
