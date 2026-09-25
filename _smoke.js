@@ -268,6 +268,40 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   }); await sleep(250);
   ok('M3 删除后侧栏移除', (await page.$eval('#nav', n => n.textContent.indexOf('测试题材') === -1)));
   await page.click('#btnCloseGenre'); await sleep(150);
+
+  /* ---------- 场景 P：删书后的覆盖层收敛（防云封面残留 / 防其他设备复活） ---------- */
+  /* 注入两条覆盖层残留：b-1002 的书内映射，以及一本根本不存在的书的映射 */
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('booklib.v1') || '{}');
+    s.cover = s.cover || {}; s.status = s.status || {};
+    s.cover['b-1002'] = 'covers/b-1002.jpg';
+    s.cover['b-ghost'] = 'covers/ghost.jpg';
+    s.status['b-1002'] = 'owned';
+    s.status['b-ghost'] = 'owned';
+    localStorage.setItem('booklib.v1', JSON.stringify(s));
+  });
+  await page.reload({ waitUntil: 'load' }); await sleep(400);
+  await page.evaluate(() => {
+    const card = [...document.querySelectorAll('.grid .card')].find(c => c.dataset.id === 'b-1002');
+    card.querySelector('.cover').click();
+  }); await sleep(300);
+  await page.click('#dDel'); await sleep(150);
+  await page.click('#dDel'); await sleep(300);
+  const stP = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('booklib.v1') || '{}');
+    return {
+      deleted: s.deleted || [],
+      cover: Object.keys(s.cover || {}),
+      status: Object.keys(s.status || {}),
+      stillAdded: (s.added || []).some(x => x.id === 'b-1002'),
+    };
+  });
+  ok('P1 自建书删除留下墓碑（防其他设备并集复活）', stP.deleted.indexOf('b-1002') > -1 && !stP.stillAdded, JSON.stringify(stP.deleted));
+  ok('P2 删除后 cover 残留被收敛清掉（云封面才能回收）',
+    stP.cover.indexOf('b-1002') === -1 && stP.cover.indexOf('b-ghost') === -1, stP.cover.join(','));
+  ok('P3 删除后 status 残留被收敛清掉',
+    stP.status.indexOf('b-1002') === -1 && stP.status.indexOf('b-ghost') === -1, stP.status.join(','));
+
   await page.evaluate(() => localStorage.removeItem('booklib.v1'));
 
   /* ---------- 场景 F：健壮性 ---------- */
