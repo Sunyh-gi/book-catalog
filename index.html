@@ -823,8 +823,9 @@
             '<span class="muted">点「选择」自动填充下方表单</span>';
           document.getElementById("addResults").innerHTML = html +
             '<div class="db-label">豆瓣候选版本</div>' + list.map(dbRowHTML).join("");
-          // 并行预取各候选详情，补全副标题 / 出版社 / ISBN 显示
-          list.forEach(function (c) {
+          // 候选自带 abstract（作者/译者/出版社/出版年/定价）时直接展示；
+          // 只给没有摘要的（兜底路径）预取详情，省掉一整轮并发抓取
+          list.filter(function (c) { return !c.abstract; }).forEach(function (c) {
             var sid = c.id;
             fetch(DOUBAN_SVC + "/fetch?id=" + encodeURIComponent(sid), { mode: "cors" })
               .then(function (r) { return r.json(); })
@@ -865,7 +866,7 @@
         '<div class="add-info"><h4>' + esc(title) +
         (sub ? '<span class="db-sub">' + esc(sub) + '</span>' : '') + '</h4>' +
         '<p>' + esc(meta) + '</p>' +
-        '<p class="db-more">加载版本信息…</p></div>' +
+        '<p class="db-more">' + esc(c.abstract || "加载版本信息…") + '</p></div>' +
         '<button class="btn-ghost db-pick">选择</button></div>';
     }
     function fillForm(d) {
