@@ -417,6 +417,15 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
             isbn: '978-7-5442-5399-4', series: '理想国译丛',
             url: 'https://book.douban.com/subject/6082808/' });
         }
+        if (u.pathname === '/fetch' && u.searchParams.get('id') === '70001') {
+          // 详情页没有「副标题」字段（真实豆瓣常见，如《阿拉伯的劳伦斯》只有「原作名」），
+          // 副标题只能从候选标题「书名 : 副标题」拆出来
+          return send({ id: '70001', title: '百年孤独（另一版本）', subtitle: null,
+            author: '测试作者', translator: '', publisher: '测试出版社',
+            pubDate: '2020-05', year: 2020, pages: 300, binding: '平装',
+            isbn: '9780000000001', series: '',
+            url: 'https://book.douban.com/subject/70001/' });
+        }
         send({ error: 'not found' }, 404);
       });
       srv.listen(MOCK_PORT, '127.0.0.1', function () { resolve(srv); });
@@ -485,6 +494,47 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   const hrefH = await page2.$eval('#detailPanel .d-cover', n => n.getAttribute('href'));
   ok('H7 详情字段来自豆瓣', dH.indexOf('南海出版公司') > -1 && dH.indexOf('360') > -1 && dH.indexOf('精装') > -1);
   ok('H8 详情封面豆瓣链接', hrefH === 'https://book.douban.com/subject/6082808/', hrefH);
+  /* H10：副标题链路。第二个候选标题是「百年孤独（另一版本）: 纪念版」，而 mock 的 /fetch
+     故意返回 subtitle: null —— 真实豆瓣详情页的 #info 常没有「副标题」字段（如《阿拉伯的
+     劳伦斯》只有「原作名」）。这条断言锁死「候选行拆出的副标题要跟着入库并显示在详情卡」 */
+  await page2.keyboard.press('Escape'); await sleep(200);
+  await page2.evaluate(() => {
+    const i = document.getElementById('searchInput');
+    i.value = ''; i.dispatchEvent(new Event('input'));
+  }); await sleep(250);
+  await page2.click('#btnAdd'); await sleep(250);
+  await page2.type('#addTitle', '百年孤独'); await sleep(100);
+  await page2.click('#btnSearchDouban'); await sleep(400);
+  // 不能用 :nth-child —— 本地查重命中会在候选前面插一行，序号会错位
+  const picksH = await page2.$$('#addResults .db-row .db-pick');
+  await picksH[1].click(); await sleep(400);
+  await page2.click('#btnManualAdd'); await sleep(800);
+  await page2.evaluate(() => {
+    const i = document.getElementById('searchInput');
+    i.value = '另一版本'; i.dispatchEvent(new Event('input'));
+  }); await sleep(300);
+  await page2.click('.grid .card .cover'); await sleep(400);
+  const subH = await page2.$eval('#detailPanel .d-sub', n => n.textContent.trim());
+  ok('H10 详情卡显示候选行拆出的副标题', subH === '纪念版', subH);
+  const dStyle = await page2.evaluate(() => {
+    const m = document.querySelector('#detailPanel .d-meta');
+    const s = document.querySelector('#detailPanel .d-meta .m-select');
+    const h = document.querySelector('#detailPanel .d-hairline');
+    const v = document.querySelector('#detailPanel .d-meta .m-value');
+    return { gap: getComputedStyle(m).rowGap, sel: getComputedStyle(s).borderBottomStyle,
+             hair: getComputedStyle(h).marginTop,
+             selH: Math.round(s.getBoundingClientRect().height),
+             valH: Math.round(v.getBoundingClientRect().height) };
+  });
+  ok('H11 元数据紧凑 + 题材行与文本行等高', dStyle.gap === '6px' && dStyle.sel === 'none' &&
+    dStyle.hair === '12px' && dStyle.selH === dStyle.valH, JSON.stringify(dStyle));
+  await page2.hover('#detailPanel .d-meta .m-select'); await sleep(200);
+  const selHover = await page2.$eval('#detailPanel .d-meta .m-select', n => {
+    const c = getComputedStyle(n);
+    return c.borderBottomStyle + '/' + c.borderBottomWidth;
+  });
+  ok('H11b 题材下拉悬停/聚焦也不浮出下划线', selHover === 'none/0px', selHover);
+  await page2.keyboard.press('Escape'); await sleep(200);
   ok('H9 在线路径无 JS 报错', err2.filter(function (e) {
     return e.indexOf('Failed to load resource') === -1;
   }).length === 0, err2.join(' | ').slice(0, 300));
