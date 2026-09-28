@@ -508,13 +508,114 @@
         localStorage.setItem(LS_KEY, JSON.stringify(store));
         return true;
       } catch (e) {
-        /* 配额溢出（多为上传封面的 dataURL 过大）绝不能静默失败，否则界面显示成功、刷新即丢 */
+        /* 配额溢出绝不能静默失败，否则界面显示成功、刷新即丢。
+           封面已外置到 IndexedDB，这里再溢出的可能性很低；仍留着兜底（IDB 不可用时封面会退回本地）。 */
         if (!quotaWarned) {
           quotaWarned = true;
-          alert("保存失败：浏览器本地存储已满（通常是上传的封面图片过大）。\n本次改动不会被保留，请删除部分上传封面或换更小的图片后重试。");
+          alert("保存失败：浏览器本地存储已满。\n本次改动不会被保留，请先「同步到云端」，再清理本机数据后重试。");
         }
         return false;
       }
+    }
+
+    /* ---------- 封面外置层（IndexedDB）----------
+       上传 / 豆瓣抓取的封面都是 dataURL，base64 比原图胖 33%。localStorage 每源只有约 5MB：
+       实测 60 本书的封面 = 3.07MB 原图 → 4.09MB base64，直接把配额撑满，saveStore() 抛异常，
+       用户看到「保存失败」且改动全丢。IndexedDB 的配额按磁盘剩余空间算（几百 MB 起，
+       且 file:// 下实测可用），所以 dataURL 一律搬进 IDB；store.cover 只留「小字符串」
+       （covers/x.jpg、covers/cloud/x.jpg、外链），localStorage 里就只剩书目元数据了。
+       读取必须同步（coverOf 在渲染路径上），故启动时把整库读进内存 coverCache ——
+       60 张约 3MB 内存，可接受。IDB 不可用时（隐私模式等）setCover 自动退回旧行为。 */
+    var IDB_NAME = "booklib.covers", IDB_STORE = "covers";
+    var coverCache = {};
+    var idbPromise = null;
+    function idb() {
+      if (!idbPromise) {
+        idbPromise = new Promise(function (res) {
+          if (!window.indexedDB) return res(null);
+          var rq = indexedDB.open(IDB_NAME, 1);
+          rq.onupgradeneeded = function () { rq.result.createObjectStore(IDB_STORE); };
+          rq.onsuccess = function () { res(rq.result); };
+          rq.onerror = function () { res(null); };
+          rq.onblocked = function () { res(null); };
+        });
+      }
+      return idbPromise;
+    }
+    /* 一个事务包一次操作。IDB 不可用 / 出错一律 resolve(null)，调用方据此走降级分支 */
+    function idbRun(mode, fn) {
+      return idb().then(function (db) {
+        if (!db) return null;
+        return new Promise(function (res) {
+          var tx;
+          try { tx = db.transaction(IDB_STORE, mode); }
+          catch (e) { return res(null); }
+          fn(tx.objectStore(IDB_STORE));
+          tx.oncomplete = function () { res(true); };
+          tx.onerror = function () { res(null); };
+          tx.onabort = function () { res(null); };
+        });
+      }).catch(function () { return null; });
+    }
+    function idbDump() {
+      return idb().then(function (db) {
+        if (!db) return null;
+        return new Promise(function (res) {
+          var out = {};
+          var tx;
+          try { tx = db.transaction(IDB_STORE, "readonly"); }
+          catch (e) { return res(null); }
+          var rq = tx.objectStore(IDB_STORE).openCursor();
+          rq.onsuccess = function () {
+            var c = rq.result;
+            if (c) { out[c.key] = c.value; c.continue(); } else { res(out); }
+          };
+          rq.onerror = function () { res(null); };
+          tx.onabort = function () { res(null); };
+        });
+      }).catch(function () { return null; });
+    }
+    /* 封面写入：dataURL 进 IDB（先乐观写内存，渲染立刻可见），小字符串留在 store.cover */
+    function setCover(bid, v) {
+      if (v && v.indexOf("data:image/") === 0) {
+        coverCache[bid] = v;
+        delete store.cover[bid];
+        return idbRun("readwrite", function (os) { os.put(v, bid); }).then(function (ok) {
+          if (ok === null) {   // IDB 不可用 → 退回旧行为（dataURL 仍留在 localStorage）
+            delete coverCache[bid];
+            store.cover[bid] = v;
+          }
+        });
+      }
+      delete coverCache[bid];
+      if (v) store.cover[bid] = v; else delete store.cover[bid];
+      return idbRun("readwrite", function (os) { os.delete(bid); });
+    }
+    /* 启动：读 IDB 进内存 + 把 localStorage 里遗留的 dataURL 迁进去。
+       返回「是否搬动过」—— 只有搬动过才需要 saveStore()，那一刻 localStorage 才真正腾空。 */
+    function loadCovers() {
+      return idbDump().then(function (all) {
+        if (all === null) return false;
+        coverCache = all;
+        var moved = [];
+        Object.keys(store.cover || {}).forEach(function (bid) {
+          var v = store.cover[bid];
+          if (v && v.indexOf("data:image/") === 0) {
+            coverCache[bid] = v;
+            delete store.cover[bid];
+            moved.push([bid, v]);
+          }
+        });
+        if (!moved.length) return false;
+        return idbRun("readwrite", function (os) {
+          moved.forEach(function (p) { os.put(p[1], p[0]); });
+        }).then(function (ok) {
+          if (ok !== null) return true;
+          /* IDB 写失败就整个回滚：宁可 dataURL 继续占着 localStorage，也不能把封面弄丢 */
+          moved.forEach(function (p) { delete coverCache[p[0]]; store.cover[p[0]] = p[1]; });
+          return false;
+        });
+      });
     }
     function allBooks() {
       var del = store.deleted || [];
@@ -535,6 +636,13 @@
         if (!m) return;
         Object.keys(m).forEach(function (k) { if (!live[k]) { delete m[k]; removed++; } });
       });
+      /* IndexedDB 里的封面同样要跟着书走：删书不删图，封面库会一直涨 */
+      Object.keys(coverCache).forEach(function (k) {
+        if (live[k]) return;
+        delete coverCache[k];
+        idbRun("readwrite", function (os) { os.delete(k); });
+        removed++;
+      });
       return removed;
     }
     function statusOf(b) { return store.status[b.id] || b.status || "pending"; }
@@ -545,9 +653,9 @@
     function genreOf(b) {
       return store.g.map[b.id] !== undefined ? store.g.map[b.id] : (b.genre || "");
     }
-    /* 封面：localStorage 覆盖层优先（豆瓣导入/补封面写入），books.js 静态值兜底 */
+    /* 封面：内存缓存（IDB 里的 dataURL）> localStorage 覆盖层（路径 / 外链）> books.js 静态值 */
     function coverOf(b) {
-      return (store.cover && store.cover[b.id]) || b.cover || "";
+      return coverCache[b.id] || (store.cover && store.cover[b.id]) || b.cover || "";
     }
     function findBook(id) {
       var list = allBooks();
@@ -1002,9 +1110,10 @@
               .then(function (r) { return r.json(); })
               .then(function (j) {
                 if (j && j.ok && (j.dataUrl || j.cover)) {
-                  store.cover[bid] = j.dataUrl || j.cover;
-                  saveStore();
-                  renderAll();
+                  setCover(bid, j.dataUrl || j.cover).then(function () {
+                    saveStore();
+                    renderAll();
+                  });
                 }
               })
               .catch(function () {});
@@ -1299,8 +1408,12 @@
         cover: {}, savedAt: new Date().toISOString()
       };
       var jobs = [];
-      Object.keys(store.cover).forEach(function (bid) {
-        var v = store.cover[bid];
+      /* 封面可能有两处：IDB（dataURL）与 store.cover（路径）。按并集走，两边都不漏 */
+      var covIds = {};
+      Object.keys(store.cover || {}).forEach(function (bid) { covIds[bid] = 1; });
+      Object.keys(coverCache).forEach(function (bid) { covIds[bid] = 1; });
+      Object.keys(covIds).forEach(function (bid) {
+        var v = coverCache[bid] || store.cover[bid];
         if (!v) return;
         if (v.indexOf("data:image/") === 0) {
           jobs.push({ bid: bid, data: v.split(",")[1] });   // dataURL → 独立封面文件（Git 自动去重）
@@ -1337,7 +1450,9 @@
       store.g = p.g || { list: null, map: {} };
       store.deleted = p.deleted || [];
       store.cover = {};
-      Object.keys(p.cover || {}).forEach(function (bid) { store.cover[bid] = p.cover[bid]; });
+      coverCache = {};                                     // 硬覆盖：本机封面（含 IDB 里的）一并让位给云端
+      idbRun("readwrite", function (os) { os.clear(); });
+      Object.keys(p.cover || {}).forEach(function (bid) { setCover(bid, p.cover[bid]); });
       pruneOverlay();
       saveStore();
       renderAll();
@@ -1360,6 +1475,7 @@
       /* deleted 也算「本机有数据」：否则本机把书全删光后，下次打开又会自动拉回云端旧书 */
       var hasLocal = (store.added && store.added.length) ||
         Object.keys(store.status || {}).length || Object.keys(store.cover || {}).length ||
+        Object.keys(coverCache).length ||
         (store.deleted || []).length;
       if (hasLocal) return;
       fetch(CLOUD_PAGES + CLOUD_DATA + "?t=" + Date.now())
@@ -1541,14 +1657,21 @@
       compressCover(f, function (dataUrl) {
         inp.value = '';
         if (!dataUrl) { alert('图片读取失败，请换一张试试'); return; }
-        var prev = store.cover[bid];
-        store.cover[bid] = dataUrl;
-        if (!saveStore()) {   // 存不进去就回滚，避免界面显示已换封面、刷新后又变回去
-          if (prev === undefined) delete store.cover[bid]; else store.cover[bid] = prev;
-          return;
-        }
-        renderAll();
-        openDetail(bid);
+        var prevData = coverCache[bid], prevPath = store.cover[bid];
+        setCover(bid, dataUrl).then(function () {
+          /* 元数据写不进去就回滚，避免界面显示已换封面、刷新后又变回去。
+             封面本身已在 IndexedDB，回滚要连它一起还原 */
+          if (!saveStore()) {
+            if (prevData === undefined) delete coverCache[bid]; else coverCache[bid] = prevData;
+            if (prevPath === undefined) delete store.cover[bid]; else store.cover[bid] = prevPath;
+            idbRun("readwrite", function (os) {
+              if (prevData === undefined) os.delete(bid); else os.put(prevData, bid);
+            });
+            return;
+          }
+          renderAll();
+          openDetail(bid);
+        });
       });
     });
 
@@ -1658,12 +1781,16 @@
     document.getElementById("footUpdated").textContent = "数据更新 " + (meta.updatedAt || "—");
     document.getElementById("footVersion").textContent = meta.version || "v1.0";
     /* 启动就收敛一次覆盖层：否则旧版留下的残留（删书没清 cover/status/g.map）
-       要等到下次云同步才清掉，中间一直挂在 localStorage 里。只在真有残留时写回。 */
-    if (pruneOverlay()) saveStore();
-    renderAll();
-    probeDouban();
-    updateCloudState();
-    cloudAutoLoad();
+       要等到下次云同步才清掉，中间一直挂在 localStorage 里。只在真有残留时写回。
+       封面必须先读进内存（coverOf 是同步的），否则首屏渲染会漏掉 IDB 里的封面；
+       loadCovers 顺带把旧版留在 localStorage 的 dataURL 迁进 IDB，并告诉我们要不要落盘。 */
+    loadCovers().then(function (migrated) {
+      if (pruneOverlay() || migrated) saveStore();
+      renderAll();
+      probeDouban();
+      updateCloudState();
+      cloudAutoLoad();
+    });
   })();
   </script>
 </body>
