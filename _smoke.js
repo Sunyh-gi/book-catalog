@@ -590,6 +590,114 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   ok('Q2 限流时降级候选行不显示副标题（不把「没冒号」当成「没有副标题」）',
     limUI.sub === '', JSON.stringify(limUI));
 
+  /* ---------- 场景 R：封面外置到 IndexedDB ----------
+     上传 / 豆瓣抓取的封面都是 dataURL，base64 比原图胖 33%。localStorage 每源只有约 5MB，
+     实测 60 本书的封面就把它撑满（3.07MB 原图 → 4.09MB base64），于是 saveStore() 抛配额异常、
+     用户看到「保存失败」且改动全丢。现在 dataURL 一律搬进 IndexedDB（配额按磁盘剩余空间算），
+     store.cover 只留「小字符串」（covers/x.jpg 这类路径），读取靠启动时读进内存的 coverCache
+     （coverOf 在渲染路径上，必须同步）。
+     这一场景锁死四件事：旧数据被迁出 localStorage（R1/R2/R5）、路径封面不被误迁（R3）、
+     IDB 里已有的封面首屏就能显示（R4）、删书后 IDB 里的封面跟着清（R6）。 */
+  const TINY = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  /* 约 159KB 的合成 dataURL：只为撑出「localStorage 曾经装不下」的量级，不要求能解码 */
+  const BIG = 'data:image/png;base64,' +
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='.repeat(1500);
+
+  /* 从页面上下文直接操作同一个 IDB（file:// 下与页面同源，实测可用） */
+  const idbClear = () => page2.evaluate(() => new Promise(res => {
+    const rq = indexedDB.open('booklib.covers', 1);
+    rq.onupgradeneeded = () => { rq.result.createObjectStore('covers'); };
+    rq.onerror = () => res(false);
+    rq.onsuccess = () => {
+      const db = rq.result, tx = db.transaction('covers', 'readwrite');
+      tx.objectStore('covers').clear();
+      tx.oncomplete = () => { db.close(); res(true); };
+      tx.onerror = () => { db.close(); res(false); };
+    };
+  }));
+  const idbKeys = () => page2.evaluate(() => new Promise(res => {
+    const rq = indexedDB.open('booklib.covers', 1);
+    rq.onupgradeneeded = () => { rq.result.createObjectStore('covers'); };
+    rq.onerror = () => res(null);
+    rq.onsuccess = () => {
+      const db = rq.result, out = [];
+      const c = db.transaction('covers', 'readonly').objectStore('covers').openCursor();
+      c.onsuccess = () => {
+        const cur = c.result;
+        if (cur) { out.push(cur.key); cur.continue(); } else { db.close(); res(out.sort()); }
+      };
+      c.onerror = () => { db.close(); res(null); };
+    };
+  }));
+  const idbPut = ents => page2.evaluate(e => new Promise(res => {
+    const rq = indexedDB.open('booklib.covers', 1);
+    rq.onupgradeneeded = () => { rq.result.createObjectStore('covers'); };
+    rq.onerror = () => res(false);
+    rq.onsuccess = () => {
+      const db = rq.result, tx = db.transaction('covers', 'readwrite'), os = tx.objectStore('covers');
+      e.forEach(p => os.put(p[1], p[0]));
+      tx.oncomplete = () => { db.close(); res(true); };
+      tx.onerror = () => { db.close(); res(false); };
+    };
+  }), ents);
+
+  await idbClear();
+  await idbPut([['b-idb-3', TINY], ['b-idb-4', TINY]]);
+  await page2.evaluate(d => localStorage.setItem('booklib.v1', JSON.stringify(d)), {
+    status: {}, g: { list: null, map: {} }, deleted: [],
+    cover: { 'b-idb-1': BIG, 'b-idb-2': 'covers/b-idb-2.jpg' },
+    added: [
+      { id: 'b-idb-1', title: '遗留 dataURL 封面', author: '', cover: '' },
+      { id: 'b-idb-2', title: '路径封面', author: '', cover: '' },
+      { id: 'b-idb-3', title: 'IDB 里已有封面', author: '', cover: '' },
+      { id: 'b-idb-4', title: '待删除的书', author: '', cover: '' },
+    ],
+  });
+  await page2.reload({ waitUntil: 'load' });
+  await sleep(700);
+
+  const afterR = await page2.evaluate(() => {
+    const raw = localStorage.getItem('booklib.v1') || '{}';
+    const s = JSON.parse(raw);
+    const src = id => {
+      const img = document.querySelector('article.card[data-id="' + id + '"] .cover img');
+      return img ? img.getAttribute('src') : null;
+    };
+    return {
+      raw: raw.length,
+      coverKeys: Object.keys(s.cover || {}),
+      lsHasDataUrl: Object.keys(s.cover || {}).some(k => String(s.cover[k]).indexOf('data:') === 0),
+      src1: src('b-idb-1'),
+      path2: (s.cover || {})['b-idb-2'] || null,
+      src3: src('b-idb-3'),
+    };
+  });
+  ok('R1 遗留 dataURL 已迁出 localStorage（cover 里只剩小字符串）',
+    !afterR.lsHasDataUrl && afterR.coverKeys.indexOf('b-idb-1') === -1,
+    JSON.stringify(afterR.coverKeys));
+  ok('R2 迁移后封面照常显示（coverOf 从内存缓存读，不依赖 localStorage）',
+    afterR.src1 === BIG, String(afterR.src1).slice(0, 40));
+  ok('R3 路径封面不被误迁（covers/x.jpg 这类小字符串仍留在 localStorage）',
+    afterR.path2 === 'covers/b-idb-2.jpg', String(afterR.path2));
+  ok('R4 原先就存在 IndexedDB 里的封面，首屏即可显示',
+    afterR.src3 === TINY, String(afterR.src3).slice(0, 40));
+  ok('R5 localStorage 体积已回落（大 dataURL 不再计入）',
+    afterR.raw < 5000, afterR.raw + ' 字节（迁走前约 ' + BIG.length + '）');
+
+  /* 删书 → IDB 里的封面必须跟着清（否则封面库只增不减，等于换了个地方涨） */
+  await page2.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('booklib.v1'));
+    s.added = s.added.filter(b => b.id !== 'b-idb-4');
+    localStorage.setItem('booklib.v1', JSON.stringify(s));
+  });
+  await page2.reload({ waitUntil: 'load' });
+  await sleep(700);
+  const keysAfterDel = await idbKeys();
+  ok('R6 删书后 IndexedDB 里的封面被清掉（不留孤儿）',
+    Array.isArray(keysAfterDel) && keysAfterDel.indexOf('b-idb-4') === -1 &&
+    keysAfterDel.indexOf('b-idb-3') > -1,
+    JSON.stringify(keysAfterDel));
+
   await page2.evaluate(() => { localStorage.removeItem('booklib.v1'); });
   await page2.close();
   mock.close();
