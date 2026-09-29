@@ -57,7 +57,9 @@
   /* ============ 主区（app shell：仅书卡网格滚动，页头/筛选行固定） ============ */
   .main { flex: 1; min-width: 0; height: 100%; overflow: hidden;
     display: flex; flex-direction: column; padding: 14px 64px 28px; }
-  .content { width: 100%; max-width: 994px; height: 100%; margin: 0 auto;
+  /* 内容列原钉在 992px 居中（那是「5 列定稿」算出来的临界值），大屏两侧就空出成片留白。
+     2026-09-29 放开：撑满主区，列数交给网格自己算（见 .grid），页头/筛选行随之一并全宽。 */
+  .content { width: 100%; height: 100%;
     display: flex; flex-direction: column; min-height: 0; }
   .topbar { height: 88px; flex: 0 0 88px; display: flex; align-items: center; justify-content: space-between; }
   .topbar h1 { font-size: 20px; font-weight: 500; color: var(--ink); line-height: 28px; }
@@ -88,7 +90,10 @@
   .gridwrap { flex: 1; min-height: 0; overflow-y: auto; margin-top: 32px;
     scrollbar-width: none; -ms-overflow-style: none; }
   .gridwrap::-webkit-scrollbar { display: none; width: 0; height: 0; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 150px));
+  /* 列数不写死：卡片最少 150px，能塞几列塞几列，余量由 1fr 摊进每列（列距 60 不动，留白比例不随屏宽变）。
+     ⚠ 用 auto-fill 而非 auto-fit —— auto-fit 会把空轨道收掉，书少时一张卡会被拉到满屏宽。
+     ⚠ 封面靠 .cover 的 aspect-ratio 等比跟随列宽，不必再写死 150×213。 */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     column-gap: 60px; row-gap: 56px; }
   .card { display: flex; flex-direction: column; }
   .cover { position: relative; aspect-ratio: 169 / 240; border-radius: 6px; background: #E9E9EC;
