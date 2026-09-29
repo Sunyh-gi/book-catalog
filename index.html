@@ -383,35 +383,35 @@
 
       <div class="cloud-sec">
         <div class="cloud-sec-head">
-          <span class="cloud-sec-title">书库快照 · GitHub</span>
+          <span class="cloud-sec-title">云端书库</span>
           <span class="cloud-badge off" id="badgeToken">未配置</span>
         </div>
-        <p class="cloud-hint">Fine-grained PAT，仅上传时需要</p>
-        <input class="cloud-input" id="cloudToken" type="password" placeholder="粘贴 Personal Access Token" autocomplete="off">
-        <p class="cloud-fold" id="cloudFold">▸ 如何生成 Token · 三步说明</p>
+        <p class="cloud-hint">一个口令即可 · 不需要 GitHub Token</p>
+        <input class="cloud-input" id="cloudKey" type="password" placeholder="填写云端口令" autocomplete="off">
+        <p class="cloud-fold" id="cloudFold">▸ 口令是什么 · 说明</p>
         <div class="cloud-steps" id="cloudSteps" hidden>
-          ① Repository access 选「Only select repositories」→ 勾选 <b>book-catalog</b><br>
-          ② Permissions → Contents → 设为「Read and write」<br>
-          ③ 生成后粘贴到上方输入框；Token 只存在你的浏览器，且仅能读写 book-catalog 一个仓库
+          口令在部署 Worker 时设置（本机跑 <b>node _cf_deploy.js --secrets</b> 会生成并打印）。<br>
+          GitHub Token 存在云端 Worker 里，<b>不会进浏览器</b>；口令只决定「能不能写这个仓库」。<br>
+          填一次即可，存在本机浏览器；换设备再填一次同一个口令。
         </div>
       </div>
 
       <div class="cloud-sec">
         <div class="cloud-sec-head">
-          <span class="cloud-sec-title">豆瓣云端服务<span class="opt">可选</span></span>
-          <span class="cloud-badge off" id="badgeDouban">未配置</span>
+          <span class="cloud-sec-title">豆瓣云端服务<span class="opt">可选覆盖</span></span>
+          <span class="cloud-badge" id="badgeDouban">内置云端</span>
         </div>
-        <p class="cloud-hint">手机等无法跑本地服务的设备填 Worker 地址</p>
-        <input class="cloud-input" id="cloudDoubanUrl" type="url" placeholder="https://douban.你的域名" autocomplete="off">
-        <p class="cloud-doc">部署说明见 cloudflare/部署说明.md；配置后本机服务不可用时自动回落云端</p>
+        <p class="cloud-hint">已内置，留空即用；只有换部署域名时才需要填</p>
+        <input class="cloud-input" id="cloudDoubanUrl" type="url" placeholder="https://douban.sunyh.ac.cn（内置）" autocomplete="off">
+        <p class="cloud-doc">本机服务在跑时优先走本机，否则自动回落云端；搜索、封面、入库都走它</p>
       </div>
 
       <div class="cloud-hr"></div>
       <div class="cloud-actions">
-        <button class="btn-cloud-main" id="btnCloudUp">同步到云端</button>
+        <button class="btn-cloud-main" id="btnCloudUp">立即同步</button>
         <button class="btn-cloud-sub" id="btnCloudDown">从云端恢复</button>
       </div>
-      <p class="cloud-note" id="cloudNote">Token 仅存本机浏览器 · 恢复不需要 Token</p>
+      <p class="cloud-note" id="cloudNote">改动会自动同步 · 口令只存本机浏览器</p>
     </div>
   </div>
 
@@ -483,6 +483,12 @@
     var doubanOnline = false;
     var selectedDouban = null;
 
+    /* 云端服务基地址（Cloudflare Worker：豆瓣代理 + 书库写入后端，同一域名同一部署）。
+       内置默认值 —— 「完全在线」要求任意设备打开就能用，不能每台设备手填一次：
+       localStorage 按来源隔离，file:// 与 Pages 各存一份，手机 / 平板还得再各填一份。
+       ?svc= 与「云同步」面板里的覆盖框都能临时指向别处（换部署域名时用）。 */
+    var CLOUD_SVC = "https://douban.sunyh.ac.cn";
+
     /* ---------- 数据层 ---------- */
     function loadStore() {
       try {
@@ -503,10 +509,12 @@
     }
     var store = loadStore();
     var quotaWarned = false;
+    /* 云数据落盘期间置真（合并云端快照 / 硬覆盖恢复）：那是「同步」不是「用户改动」，
+       不该反过来触发自动推送 —— 否则「A 推 → B 拉 → B 又推回」会无限产生提交。 */
+    var cloudWriting = false;
     function saveStore() {
       try {
         localStorage.setItem(LS_KEY, JSON.stringify(store));
-        return true;
       } catch (e) {
         /* 配额溢出绝不能静默失败，否则界面显示成功、刷新即丢。
            封面已外置到 IndexedDB，这里再溢出的可能性很低；仍留着兜底（IDB 不可用时封面会退回本地）。 */
@@ -516,6 +524,8 @@
         }
         return false;
       }
+      if (!cloudWriting) markDirty();
+      return true;
     }
 
     /* ---------- 封面外置层（IndexedDB）----------
@@ -975,7 +985,7 @@
              j.limited 是代理明确给出的限流信号，比「有没有 abstract」更早更准。 */
           var degraded = (j.limited === true) ||
             (list.length > 0 && !list.some(function (c) { return c.abstract; }));
-          if (degraded && doubanCloudUrl()) {
+          if (degraded && doubanCloudUrl() && !hasSvcOverride()) {
             fetch(doubanCloudUrl() + "/search?q=" + encodeURIComponent(t || isbn), { mode: "cors" })
               .then(function (r) { return r.json(); })
               .then(function (cj) {
@@ -1213,43 +1223,49 @@
       renderGenreList(); renderAll(); renderGenreOptions();
     }
 
-    /* ---------- 云同步（GitHub 仓库：data/library.json + covers/cloud/） ---------- */
+    /* ---------- 云同步 ----------
+       存储 = 公开仓库 Sunyh-gi/book-catalog 的 data/library.json + covers/cloud/；
+       写入 = 云端 Worker 的 /gh/*（PAT 存在 Worker 密钥里，页面只带一个口令）。
+       为什么要这层：以前页面直连 GitHub API，要求每台设备生成并粘贴一个有写权限的 PAT
+       （选仓库、勾 Contents 读写、设过期），file:// 与 Pages 还各存一份，到期要重来。
+       现在口令只决定「能不能写这个仓库」，GitHub Token 不进浏览器。 */
     var CLOUD_CFG_KEY = "booklib.cloud";
-    var CLOUD_REPO = "Sunyh-gi/book-catalog";
     var CLOUD_DATA = "data/library.json";
     var CLOUD_COVER_DIR = "covers/cloud";
     var CLOUD_PAGES = "https://sunyh-gi.github.io/book-catalog/";
-    /* 云端豆瓣代理地址只能存在 localStorage，不能内置：它是个人域名，_privacy_scan.js 会拦下
-       任何写进公开仓库的域名（index.html 本身就在推送白名单里）。代价是 localStorage 按来源隔离，
-       file:// 与 Pages 域名要各配一次 —— 所以没配时必须在界面上说清楚，不能像以前那样静默不跑。 */
     function cloudCfg() {
-      try { return JSON.parse(localStorage.getItem(CLOUD_CFG_KEY)) || null; } catch (e) { return null; }
+      try {
+        var c = JSON.parse(localStorage.getItem(CLOUD_CFG_KEY));
+        return (c && c.key) ? c : null;
+      } catch (e) { return null; }
     }
     function setCloudNote(s) { var el = document.getElementById("cloudNote"); if (el) el.textContent = s; }
-    function updateCloudState() {
-      var el = document.getElementById("cloudState");
-      var cfg = cloudCfg();
-      el.textContent = cfg ? "Token 已配置" : "未配置";
-    }
+    function setSyncState(s) { var el = document.getElementById("cloudState"); if (el) el.textContent = s; }
+    function updateCloudState() { setSyncState(cloudCfg() ? "已连接云端" : "未配置口令"); }
+    /* 云端豆瓣代理地址：没存过就用内置默认（CLOUD_SVC）。存过则优先用存的 ——
+       换部署域名时老设备改一次即可覆盖，不必等页面更新。 */
     function doubanCloudUrl() {
       try {
         var c = JSON.parse(localStorage.getItem("booklib.doubancloud") || "null");
-        return (c && c.url) ? c.url.replace(/\/+$/, "") : "";
-      } catch (e) { return ""; }
+        if (c && c.url) return c.url.replace(/\/+$/, "");
+      } catch (e) {}
+      return CLOUD_SVC;
+    }
+    /* ?svc= 是调试口子（见 probeDouban）：只认它给的地址、不兜底。搜索的「云端重搜」兜底
+       也必须认它 —— 否则冒烟（svc 指向 mock）会被真实云端代理的结果盖掉，限流路径测不出来。 */
+    function hasSvcOverride() {
+      try { return /[?&]svc=([^&]+)/.test(location.search); } catch (e) { return false; }
     }
     function openCloud() {
       var cfg = cloudCfg();
-      document.getElementById("cloudToken").value = cfg ? cfg.token : "";
-      /* 没有内置默认地址了：只回填已保存的值，留空就只探本机代理 */
+      document.getElementById("cloudKey").value = cfg ? cfg.key : "";
       var storedUrl = "";
       try { storedUrl = ((JSON.parse(localStorage.getItem("booklib.doubancloud") || "null") || {}).url) || ""; } catch (e) {}
-      var inp = document.getElementById("cloudDoubanUrl");
-      inp.value = storedUrl;
-      inp.placeholder = "留空则只探本机 http://localhost:8765";
+      document.getElementById("cloudDoubanUrl").value = storedUrl;
       document.getElementById("cloudSteps").hidden = true;
-      document.getElementById("cloudFold").textContent = "▸ 如何生成 Token · 三步说明";
+      document.getElementById("cloudFold").textContent = "▸ 口令是什么 · 说明";
       updateCloudBadges();
-      setCloudNote("Token 仅存本机浏览器 · 恢复不需要 Token");
+      setCloudNote("改动会自动同步 · 口令只存本机浏览器");
       document.getElementById("cloudOverlay").hidden = false;
     }
     function closeCloud() { document.getElementById("cloudOverlay").hidden = true; }
@@ -1260,66 +1276,128 @@
       var custom = false;
       try { custom = !!((JSON.parse(localStorage.getItem("booklib.doubancloud") || "null") || {}).url); } catch (e) {}
       var bd = document.getElementById("badgeDouban");
-      if (bd) { bd.textContent = custom ? "自定义" : "未配置"; bd.className = "cloud-badge" + (custom ? "" : " off"); }
+      /* 内置也是「可用」，不打 off —— off 只留给真的没配 */
+      if (bd) bd.textContent = custom ? "已覆盖" : "内置云端";
       var up = document.getElementById("btnCloudUp");
       if (up) up.disabled = !cfg;
     }
     function cloudSave() {
-      var token = document.getElementById("cloudToken").value.trim();
+      var key = document.getElementById("cloudKey").value.trim();
       var doubanUrl = document.getElementById("cloudDoubanUrl").value.trim().replace(/\/+$/, "");
-      if (token) localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify({ token: token }));
+      if (key) localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify({ key: key }));
+      else localStorage.removeItem(CLOUD_CFG_KEY);
       if (doubanUrl) localStorage.setItem("booklib.doubancloud", JSON.stringify({ url: doubanUrl }));
       else localStorage.removeItem("booklib.doubancloud");
       updateCloudState();
       updateCloudBadges();
-      setCloudNote(token ? "✅ Token 已保存（仅存本机浏览器）" : "未配置 Token：同步到云端不可用，恢复云端数据仍可用。");
-      probeDouban();   // 地址可能被改（或清空），重新探一次
+      setCloudNote(key ? "✅ 口令已保存（仅存本机浏览器）" : "未填口令：可以看云端书库，但改动同步不上去。");
+      probeDouban();          // 豆瓣地址可能被改（或清空），重新探一次
+      if (key) scheduleAutoPush();
     }
-    function ghHeaders(cfg) {
-      return {
-        "Authorization": "Bearer " + cfg.token,
-        "Accept": "application/vnd.github+json",
-        "Content-Type": "application/json",
-        "User-Agent": "book-catalog"
-      };
+
+    /* ---------- 自动同步 ----------
+       「完全在线」的最后一段：启动自动拉、改完自动推，用户不用记得点按钮。
+       只认「本机有改动还没推上去」这一个标记（DIRTY_KEY，落 localStorage 跨刷新有效）：
+       合并云端数据不算改动（cloudWriting 挡掉），否则「A 推 → B 拉 → B 又推回」会无限产生提交。 */
+    var DIRTY_KEY = "booklib.dirty";
+    var autoPushTimer = null, autoPushBusy = false;
+    function hasLocalData() {
+      return !!((store.added && store.added.length) ||
+        Object.keys(store.status || {}).length || Object.keys(store.cover || {}).length ||
+        Object.keys(coverCache).length || (store.deleted || []).length);
     }
-    /* GitHub API 的响应头带 Cache-Control: private, max-age=60，浏览器会缓存 GET。
-       连着点两次「同步」就会拿到过期 sha → PUT 被判冲突，故强制 no-store 回源。 */
-    function ghGetFileSha(cfg, p) {
-      return fetch("https://api.github.com/repos/" + CLOUD_REPO + "/contents/" + p + "?t=" + Date.now(),
-        { headers: ghHeaders(cfg), cache: "no-store" })
-        .then(function (r) { return r.json(); })
-        .then(function (j) { return (j && j.sha) ? j.sha : null; })
-        .catch(function () { return null; });
+    function isDirty() {
+      try { return localStorage.getItem(DIRTY_KEY) === "1"; } catch (e) { return false; }
     }
-    /* 409 = 分支被别的写入抢先更新（另一台设备同步 / 命令行 _gh_push 推送），ref 锁冲突；
-       422 = 并发下 sha 缺失或过期。两者都只需重读 sha 再试一次。 */
-    function ghPutFile(cfg, p, contentB64, msg, tries) {
-      tries = tries || 0;
-      return ghGetFileSha(cfg, p).then(function (sha) {
-        return fetch("https://api.github.com/repos/" + CLOUD_REPO + "/contents/" + p, {
-          method: "PUT", headers: ghHeaders(cfg),
-          body: JSON.stringify({ message: msg, content: contentB64, sha: sha || undefined, branch: "main" })
-        }).then(function (r) {
-          if (r.status === 200 || r.status === 201) return r.json();
-          return r.text().then(function (t) {
-            if ((r.status === 409 || r.status === 422) && tries < 2) {
-              return new Promise(function (res) { setTimeout(res, 700 * (tries + 1)); })
-                .then(function () { return ghPutFile(cfg, p, contentB64, msg, tries + 1); });
-            }
-            throw new Error(ghErrText(r.status, t));
-          });
-        });
+    function markDirty() {
+      try { localStorage.setItem(DIRTY_KEY, "1"); } catch (e) {}
+      scheduleAutoPush();
+    }
+    function markClean() { try { localStorage.removeItem(DIRTY_KEY); } catch (e) {} }
+    /* 防抖：连着改几本只推一次 */
+    function scheduleAutoPush() {
+      if (cloudWriting || !cloudCfg()) return;
+      clearTimeout(autoPushTimer);
+      autoPushTimer = setTimeout(autoPush, 4000);
+    }
+    function autoPush() {
+      if (!isDirty()) return;
+      var cfg = cloudCfg();
+      if (!cfg) return;
+      if (autoPushBusy) { scheduleAutoPush(); return; }   // 上一轮还在跑，等它完
+      autoPushBusy = true;
+      setSyncState("同步中…");
+      /* 推之前先拉一次并合并：另一台设备刚录入的书不会被这一推盖掉 */
+      fetchCloudSnapshot(cfg).then(function (cloud) {
+        if (cloud) mergeStoreWithCloud(cloud);
+        return doCloudUpload(cfg);
+      }).then(function (r) {
+        autoPushBusy = false;
+        if (r.ok && !r.failed) { markClean(); setSyncState("已同步"); }
+        else setSyncState(r.ok ? "有封面没传上" : "同步失败");
+      }).catch(function () {
+        autoPushBusy = false;
+        setSyncState("同步失败");
       });
     }
-    /* 409 的原始报文是 git 的 ref 锁报错（"Ref ... is at <commit> but expected <commit>"），
-       对用户毫无意义 → 换成能照做的说法 */
-    function ghErrText(status, body) {
-      if (status === 409) return "仓库刚被其他改动更新（另一台设备同步，或命令行推送），请再点一次「同步到云端」";
-      if (status === 401) return "Token 无效或已过期，请重新生成 Fine-grained PAT";
-      if (status === 403) return "Token 权限不足（需 Contents 读写）或已触发限流";
-      if (status === 404) return "仓库或路径不存在，检查 Token 是否授权了 " + CLOUD_REPO;
-      return "GitHub " + status + "：" + String(body).slice(0, 120);
+
+    /* 豆瓣代理与书库写入是同一个 Worker、同一个域名，基地址共用。
+       面板里「豆瓣云端服务」覆盖 = 换部署域名，写入也得跟着走，否则换域名后写入还打旧站。 */
+    function svcBase() { return doubanCloudUrl(); }
+    function ghHeaders(cfg) { return { "X-Book-Key": cfg.key, "Content-Type": "application/json" }; }
+    function ghFail(status, body) {
+      var msg = "";
+      try { msg = (JSON.parse(body) || {}).error || ""; } catch (e) {}
+      if (status === 401) return "口令不对（或云端 Worker 还没配 BOOK_KEY）—— 到「☁ 云同步」里重填一次";
+      if (status === 503) return "云端 Worker 还没配 GH_PAT：在本机跑一次 node _cf_deploy.js --secrets";
+      return "云端写入失败 HTTP " + status + (msg ? "：" + msg : "");
+    }
+    /* /gh/file 的 PUT 由 Worker 内部「读 sha → 写 → 撞锁重试」，页面只发一次请求。
+       no-store 必须带：中间层缓存会让「刚写完又读到旧 sha」。 */
+    function ghGetFile(cfg, p) {
+      return fetch(svcBase() + "/gh/file?path=" + encodeURIComponent(p) + "&t=" + Date.now(),
+        { headers: ghHeaders(cfg), cache: "no-store" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; });
+    }
+    function ghPutFile(cfg, p, contentB64, msg) {
+      return fetch(svcBase() + "/gh/file", {
+        method: "PUT", headers: ghHeaders(cfg),
+        body: JSON.stringify({ path: p, content: contentB64, message: msg })
+      }).then(function (r) {
+        if (r.ok) return r.json();
+        return r.text().then(function (t) { throw new Error(ghFail(r.status, t)); });
+      });
+    }
+    function ghDeleteFile(cfg, p, sha, msg) {
+      return fetch(svcBase() + "/gh/file", {
+        method: "DELETE", headers: ghHeaders(cfg),
+        body: JSON.stringify({ path: p, sha: sha, message: msg })
+      }).then(function (r) { if (!r.ok && r.status !== 404) throw new Error(ghFail(r.status, "")); });
+    }
+    function ghListDir(cfg, p) {
+      return fetch(svcBase() + "/gh/list?path=" + encodeURIComponent(p) + "&t=" + Date.now(),
+        { headers: ghHeaders(cfg), cache: "no-store" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { return (j && j.files) || []; })
+        .catch(function () { return []; });
+    }
+    /* 读云端快照。有口令就走 Worker（直连 GitHub，没有 Pages 的 CDN 延迟 —— Pages 实测
+       1-3 分钟才可见，刚推完就拉会读到旧快照，合并时把已删的书又捞回来）。
+       没口令时退回读 Pages：那是新设备「免口令看云端书库」的入口。 */
+    function fetchCloudSnapshot(cfg) {
+      var viaWorker = cfg
+        ? ghGetFile(cfg, CLOUD_DATA).then(function (j) {
+            if (!j || !j.text) return null;
+            try { return JSON.parse(j.text); } catch (e) { return null; }
+          })
+        : Promise.resolve(null);
+      return viaWorker.then(function (p) {
+        if (p) return p;
+        return fetch(CLOUD_PAGES + CLOUD_DATA + "?t=" + Date.now())
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .catch(function () { return null; });
+      });
     }
     function strToB64(s) { return btoa(unescape(encodeURIComponent(s))); }
     /* 清理仓库中不再被任何书引用的云封面（洁癖模式：删干净） */
@@ -1332,23 +1410,17 @@
       /* 本轮上传失败的封面不能当孤儿删掉：它多半只是撞了并发，云端那份还在，
          删了会让其他设备跟着掉图（下次同步会补传） */
       (keepIds || []).forEach(function (bid) { kept[CLOUD_COVER_DIR + "/" + bid + ".jpg"] = 1; });
-      return fetch("https://api.github.com/repos/" + CLOUD_REPO + "/contents/" + CLOUD_COVER_DIR + "?t=" + Date.now(), { headers: ghHeaders(cfg) })
-        .then(function (r) { return r.ok ? r.json() : []; })
-        .then(function (list) {
-          if (!Array.isArray(list)) return 0;
-          var orphans = list.filter(function (f) { return f.type === "file" && !kept[f.path]; });
-          var delOne = function (i) {
-            if (i >= orphans.length) return Promise.resolve(orphans.length);
-            var f = orphans[i];
-            return fetch("https://api.github.com/repos/" + CLOUD_REPO + "/contents/" + f.path, {
-              method: "DELETE", headers: ghHeaders(cfg),
-              body: JSON.stringify({ message: "sync: 清理失效封面 " + f.name, sha: f.sha, branch: "main" })
-            }).then(function () { return delOne(i + 1); })
-              .catch(function () { return delOne(i + 1); });   // 单个失败不阻断
-          };
-          return delOne(0);
-        })
-        .catch(function () { return 0; });
+      return ghListDir(cfg, CLOUD_COVER_DIR).then(function (files) {
+        var orphans = files.filter(function (f) { return !kept[f.path]; });
+        var delOne = function (i) {
+          if (i >= orphans.length) return orphans.length;
+          var f = orphans[i];
+          return ghDeleteFile(cfg, f.path, f.sha, "sync: 清理失效封面 " + f.name)
+            .then(function () { return delOne(i + 1); })
+            .catch(function () { return delOne(i + 1); });   // 单个失败不阻断
+        };
+        return delOne(0);
+      }).catch(function () { return 0; });
     }
     /* 云端快照与本机按书合并（多设备安全：并集 + 本机优先 + 删除传播） */
     function mergeStoreWithCloud(cloud) {
@@ -1385,23 +1457,29 @@
       store.status = status;
       store.g = { list: glist, map: gmap };
       store.cover = cover;
-      pruneOverlay();
-      saveStore();
+      /* 合并是「同步」不是「用户改动」：cloudWriting 挡掉 markDirty，否则
+         「拉云端 → 落盘 → 标脏 → 自动推回」会无限产生提交。 */
+      cloudWriting = true;
+      try { pruneOverlay(); saveStore(); } finally { cloudWriting = false; }
       renderAll();
     }
     function cloudUpload() {
       var cfg = cloudCfg();
-      if (!cfg) { setCloudNote("请先粘贴并保存 GitHub Fine-grained PAT。"); return; }
+      if (!cfg) { setCloudNote("请先在「☁ 云同步」里填写并保存云端口令。"); return; }
       setCloudNote("正在与云端合并…");
-      fetch(CLOUD_PAGES + CLOUD_DATA + "?t=" + Date.now())
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .catch(function () { return null; })
-        .then(function (cloud) {
-          if (cloud) mergeStoreWithCloud(cloud);   // 先合并：另一台设备录入的书不会被覆盖丢失
-          setCloudNote("正在同步…（封面较多时会稍慢）");
-          doCloudUpload(cfg);
-        });
+      /* 走 fetchCloudSnapshot：有口令时经 Worker 直读仓库，避开 Pages 的 1-3 分钟 CDN 延迟
+         （拿旧快照合并会把别处已删的书又捞回来）。 */
+      fetchCloudSnapshot(cfg).then(function (cloud) {
+        if (cloud) mergeStoreWithCloud(cloud);   // 先合并：另一台设备录入的书不会被覆盖丢失
+        setCloudNote("正在同步…（封面较多时会稍慢）");
+        return doCloudUpload(cfg);
+      }).then(function (r) {
+        if (r.ok && !r.failed) { markClean(); setSyncState("已同步"); }
+        else setSyncState(r.ok ? "有封面没传上" : "同步失败");
+      });
     }
+    /* 上传本机书库到云端。返回 Promise<{ok, failed, removed}> —— autoPush 靠它判断
+       该不该清掉「待同步」标记：有封面没传上就得留着标记，下次自动补传。 */
     function doCloudUpload(cfg) {
       var payload = {
         status: store.status, added: store.added, g: store.g, deleted: store.deleted,
@@ -1422,27 +1500,33 @@
         }
       });
       var failed = [];
-      var step = function () {
-        if (!jobs.length) {
-          return ghPutFile(cfg, CLOUD_DATA, strToB64(JSON.stringify(payload, null, 2)),
-            "sync: 书库云同步 " + payload.savedAt.slice(0, 16).replace("T", " "))
-            .then(function () { return cloudCleanOrphans(cfg, payload, failed); })
-            .then(function (removed) {
-              setCloudNote("✅ 已上传云端（" + (payload.added ? payload.added.length : 0) + " 本自定义图书）" +
-                (removed ? "，并清理 " + removed + " 个失效封面" : "") +
-                (failed.length ? "；⚠ 有 " + failed.length + " 张封面没传上，再点一次「同步到云端」可补传" : "") +
-                "。其他设备约 1-3 分钟后刷新可见。");
-            })
-            .catch(function (e) { setCloudNote("上传失败：" + e.message); });
-        }
-        var j = jobs.shift();
-        ghPutFile(cfg, CLOUD_COVER_DIR + "/" + j.bid + ".jpg", j.data, "sync: 封面 " + j.bid)
-          .then(function () { payload.cover[j.bid] = CLOUD_COVER_DIR + "/" + j.bid + ".jpg"; step(); })
-          /* 单张封面失败不能中断整轮：旧版在这里直接 return，library.json 就永远不上传，
-             表现为「点了同步、提示失败、云端却一点没变」 */
-          .catch(function () { failed.push(j.bid); step(); });
+      /* 封面逐张传，单张失败只记一笔、不中断整轮：否则 library.json 永远不上传，
+         表现为「点了同步、提示失败、云端却一点没变」 */
+      var putCovers = function (i) {
+        if (i >= jobs.length) return Promise.resolve();
+        var j = jobs[i];
+        return ghPutFile(cfg, CLOUD_COVER_DIR + "/" + j.bid + ".jpg", j.data, "sync: 封面 " + j.bid)
+          .then(function () { payload.cover[j.bid] = CLOUD_COVER_DIR + "/" + j.bid + ".jpg"; })
+          .catch(function () { failed.push(j.bid); })
+          .then(function () { return putCovers(i + 1); });
       };
-      step();
+      var removed = 0;
+      return putCovers(0).then(function () {
+        return ghPutFile(cfg, CLOUD_DATA, strToB64(JSON.stringify(payload, null, 2)),
+          "sync: 书库云同步 " + payload.savedAt.slice(0, 16).replace("T", " "));
+      }).then(function () {
+        return cloudCleanOrphans(cfg, payload, failed);
+      }).then(function (n) {
+        removed = n || 0;
+        setCloudNote("✅ 已上传云端（" + (payload.added ? payload.added.length : 0) + " 本自定义图书）" +
+          (removed ? "，并清理 " + removed + " 个失效封面" : "") +
+          (failed.length ? "；⚠ 有 " + failed.length + " 张封面没传上，再点一次「立即同步」可补传" : "") +
+          "。其他设备约 1-3 分钟后刷新可见。");
+        return { ok: true, failed: failed.length, removed: removed };
+      }).catch(function (e) {
+        setCloudNote("上传失败：" + e.message);
+        return { ok: false, failed: failed.length, removed: removed };
+      });
     }
     function applyCloudPayload(p, silent) {
       store.status = p.status || {};
@@ -1453,16 +1537,22 @@
       coverCache = {};                                     // 硬覆盖：本机封面（含 IDB 里的）一并让位给云端
       idbRun("readwrite", function (os) { os.clear(); });
       Object.keys(p.cover || {}).forEach(function (bid) { setCover(bid, p.cover[bid]); });
-      pruneOverlay();
-      saveStore();
+      /* 硬覆盖同属「同步」：新设备自动加载云端书库后不该被标脏、立刻推回一份 */
+      cloudWriting = true;
+      try { pruneOverlay(); saveStore(); } finally { cloudWriting = false; }
       renderAll();
       if (!silent) closeCloud();
     }
     function cloudRestore() {
+      var cfg = cloudCfg();
       setCloudNote("正在拉取云端数据…");
-      fetch(CLOUD_PAGES + CLOUD_DATA + "?t=" + Date.now())
-        .then(function (r) { if (!r.ok) throw new Error("云端还没有数据（HTTP " + r.status + "）"); return r.json(); })
-        .then(function (p) {
+      /* 有口令走 Worker 直读（最新），没口令退回读 Pages（可能有 CDN 延迟，但没有别的路） */
+      var get = cfg
+        ? ghGetFile(cfg, CLOUD_DATA).then(function (j) { return j && j.text ? JSON.parse(j.text) : null; })
+        : fetch(CLOUD_PAGES + CLOUD_DATA + "?t=" + Date.now())
+            .then(function (r) { if (!r.ok) throw new Error("云端还没有数据（HTTP " + r.status + "）"); return r.json(); });
+      get.then(function (p) {
+          if (!p) throw new Error("云端还没有数据");
           var n = p.added ? p.added.length : 0;
           if (!confirm("用云端数据覆盖本机？本机现有的录入 / 标记 / 题材将被替换（云端共 " + n + " 本自定义图书，" + String(p.savedAt || "").replace("T", " ").slice(0, 16) + " 保存）。")) return;
           applyCloudPayload(p);
@@ -1470,16 +1560,11 @@
         })
         .catch(function (e) { setCloudNote("恢复失败：" + e.message); });
     }
-    /* 新设备 / 新浏览器首次打开：本机无数据时自动加载云端书库 */
+    /* 新设备 / 新浏览器首次打开：本机无数据时自动加载云端书库。
+       hasLocalData 里 deleted 也算「本机有数据」：否则本机把书全删光后，下次打开又会自动拉回云端旧书 */
     function cloudAutoLoad() {
-      /* deleted 也算「本机有数据」：否则本机把书全删光后，下次打开又会自动拉回云端旧书 */
-      var hasLocal = (store.added && store.added.length) ||
-        Object.keys(store.status || {}).length || Object.keys(store.cover || {}).length ||
-        Object.keys(coverCache).length ||
-        (store.deleted || []).length;
-      if (hasLocal) return;
-      fetch(CLOUD_PAGES + CLOUD_DATA + "?t=" + Date.now())
-        .then(function (r) { return r.ok ? r.json() : null; })
+      if (hasLocalData()) return;
+      fetchCloudSnapshot(cloudCfg())
         .then(function (p) {
           if (!p) return;
           var n = p.added ? p.added.length : 0;
@@ -1682,13 +1767,13 @@
     document.getElementById("btnCloudUp").addEventListener("click", cloudUpload);
     document.getElementById("btnCloudDown").addEventListener("click", cloudRestore);
     /* 云同步：配置项失焦即自动保存（无独立保存按钮）；折叠三步说明 */
-    document.getElementById("cloudToken").addEventListener("change", cloudSave);
+    document.getElementById("cloudKey").addEventListener("change", cloudSave);
     document.getElementById("cloudDoubanUrl").addEventListener("change", cloudSave);
     document.getElementById("cloudFold").addEventListener("click", function () {
       var s = document.getElementById("cloudSteps");
       var nowOpen = s.hidden;
       s.hidden = !nowOpen;
-      this.textContent = (nowOpen ? "▾ " : "▸ ") + "如何生成 Token · 三步说明";
+      this.textContent = (nowOpen ? "▾ " : "▸ ") + "口令是什么 · 说明";
     });
     document.getElementById("btnGenreAdd").addEventListener("click", genreAdd);
     document.getElementById("gNew").addEventListener("keydown", function (e) {
