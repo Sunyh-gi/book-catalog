@@ -3,8 +3,9 @@
 本地优先的**实体书管理应用**：记录个人藏书的购入状态（已购 / 未购），支持从豆瓣搜索图书、一键入库并自动抓取封面。
 
 - 纯前端单壳：一个 `index.html`（CSS/JS 全内联）+ 一个数据文件，**无构建、无依赖**
-- 数据存浏览器 `localStorage`，可一键同步到本仓库，实现多设备共享
+- 数据存浏览器 `localStorage`（封面在 IndexedDB），**改动自动同步**到本仓库，多设备共享
 - 浏览器无法直连豆瓣（CORS + 反爬），因此配套了两个代理：本机 Python 服务、Cloudflare Worker
+- 云端开箱即用：豆瓣代理地址与同步通道都已内置，任意设备打开就能用，**无需逐台配置**
 
 **在线使用 → https://sunyh-gi.github.io/book-catalog/**
 （新设备首次打开会自动加载云端书库）
@@ -19,16 +20,17 @@
 | 改已购 / 未购 | 点卡片**文字区**（点封面是打开详情） |
 | 删除图书 | 打开详情 → 书名右侧「删除」→ 点两次确认 |
 | 管理题材 | 侧栏「题材」分组 → 弹层内增删改 |
-| 多设备同步 | 侧栏「☁ 云同步」→ 填 GitHub Fine-grained PAT → 「同步到云端」 |
-| 启用豆瓣搜索 | 电脑：`python _douban_server.py`；手机等无 Python 设备：在「☁ 云同步」里填一个 Cloudflare Worker 地址（端点契约见下方「豆瓣代理」，可自行部署） |
+| 多设备同步 | **自动**：改动后约 4 秒自动推上云端，其他设备打开自动拉取并合并。首次在一台设备上打开侧栏「☁ 云同步」填一次**云端口令**即可 |
+| 启用豆瓣搜索 | **内置，无需配置**：本机服务在跑就走本机，否则自动回落云端 Worker |
 
 ## 数据怎么存
 
 | 层 | 位置 | 说明 |
 |---|---|---|
 | 底册 | `data/books.js` | 仓库里的初始书目 |
-| 本机覆盖层 | `localStorage["booklib.v1"]` | 页面上的一切改动（改标记 / 录书 / 删书 / 题材 / 封面）都写这里 |
-| 云快照 | `data/library.json` | 点「同步到云端」后全量写入本仓库，其他设备刷新即得 |
+| 本机覆盖层 | `localStorage["booklib.v1"]` | 页面上的一切改动（改标记 / 录书 / 删书 / 题材 / 封面路径）都写这里 |
+| 本机封面 | IndexedDB `booklib.covers` | 封面图（dataURL）单独存这里，绕开 localStorage 约 5MB 的配额限制 |
+| 云快照 | `data/library.json` + `covers/cloud/` | 改动后自动写入本仓库，其他设备打开即得 |
 
 覆盖层结构：
 
@@ -36,9 +38,19 @@
 { status:  { 书id: "owned" | "pending" },   // 购入状态
   added:   [ 新书 ],
   g:       { list: 题材字典 | null, map: { 书id: 题材 } },
-  cover:   { 书id: "covers/x.jpg" | "covers/cloud/x.jpg" | "data:image/..." },
+  cover:   { 书id: "covers/x.jpg" | "covers/cloud/x.jpg" },  // 只放小字符串，dataURL 封面在 IndexedDB
   deleted: [ 被删的书 id ] }
 ```
+
+## 云同步
+
+书库快照存在本仓库，多设备共享同一份数据：
+
+- **写入不碰 GitHub Token**：Cloudflare Worker 代持 Token，页面只需一个**云端口令**（首次填一次，存本机浏览器，不随仓库公开）
+- **全自动**：启动时自动拉取并合并云端；本机有改动时约 4 秒防抖后自动推送，不需要点按钮
+- **合并而非覆盖**：推之前先拉一次再合并，另一台设备刚录入的书不会被这一台盖掉
+- **手动兜底**：「立即同步」= 合并并上传；「从云端恢复」= 放弃本机、强制用云端覆盖（**只在确实要重置本机时用**）
+- 其他设备约 1-3 分钟后刷新可见（Pages 重新构建的延迟）
 
 ## 豆瓣代理
 
@@ -53,8 +65,9 @@
 | `GET /save_cover?sid=&book_id=` | 把封面落到 `covers/<book_id>.jpg` |
 
 - **本机**：`_douban_server.py` 监听 `127.0.0.1:8765`（Windows 可双击 `_start_douban_server.cmd` 启动），详情缓存 24 小时
-- **云端**：Cloudflare Worker，供手机 / 平板使用。⚠ `*.workers.dev` 域名在国内被 DNS 污染，**必须绑自定义域名**
+- **云端**：Cloudflare Worker，供手机 / 平板使用，**地址已内置**（`https://douban.sunyh.ac.cn`），任意设备打开即用。⚠ `*.workers.dev` 域名在国内被 DNS 污染，**必须绑自定义域名**
 - 页面探测顺序 `localhost` → `127.0.0.1` → 云端；代理不在线时平台照常可用（回落为本地查重 + 手动录入）
+- 同一个 Worker 还提供云同步写入端点 `/gh/*`（代持 GitHub Token，凭口令鉴权）
 - 调试：`index.html?svc=http://127.0.0.1:9999` 可指向其他服务地址
 
 ## 文件
