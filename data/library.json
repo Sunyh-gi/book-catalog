@@ -1238,6 +1238,25 @@
       "addedAt": "2026-09-29",
       "doubanUrl": "https://book.douban.com/subject/30258986/",
       "cover": ""
+    },
+    {
+      "id": "b-1790689775123",
+      "title": "当代中国社会分层",
+      "author": "李强",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "生活·读书·新知三联书店",
+      "year": 2019,
+      "pubDate": "2019-06",
+      "pages": 535,
+      "binding": "平装",
+      "isbn": "9787807682578",
+      "genre": "社科",
+      "series": "中国社会学经典文库",
+      "status": "pending",
+      "addedAt": "2026-09-29",
+      "doubanUrl": "https://book.douban.com/subject/30424945/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1350,7 +1369,8 @@
     "b-1790584421908": "covers/cloud/b-1790584421908.jpg",
     "b-1790409776999": "covers/cloud/b-1790409776999.jpg",
     "b-1790411096597": "covers/cloud/b-1790411096597.jpg",
-    "b-1790671466777": "covers/cloud/b-1790671466777.jpg"
+    "b-1790671466777": "covers/cloud/b-1790671466777.jpg",
+    "b-1790689775123": "covers/cloud/b-1790689775123.jpg"
   },
-  "savedAt": "2026-09-29T08:44:31.965Z"
+  "savedAt": "2026-09-29T13:49:41.722Z"
 }
