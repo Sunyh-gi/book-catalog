@@ -1219,6 +1219,25 @@
       "addedAt": "2026-09-28",
       "doubanUrl": "https://book.douban.com/subject/35018237/",
       "cover": ""
+    },
+    {
+      "id": "b-1790671466777",
+      "title": "美好社会与美美与共",
+      "author": "费孝通",
+      "translator": "",
+      "subtitle": "费孝通对现时代的思考",
+      "publisher": "生活•读书•新知三联书店 生活书店出版有限公司",
+      "year": 2019,
+      "pubDate": "2019-01",
+      "pages": 506,
+      "binding": "平装",
+      "isbn": "9787807682523",
+      "genre": "社科",
+      "series": "中国社会学经典文库",
+      "status": "pending",
+      "addedAt": "2026-09-29",
+      "doubanUrl": "https://book.douban.com/subject/30258986/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1330,7 +1349,8 @@
     "b-1790527259068": "covers/cloud/b-1790527259068.jpg",
     "b-1790584421908": "covers/cloud/b-1790584421908.jpg",
     "b-1790409776999": "covers/cloud/b-1790409776999.jpg",
-    "b-1790411096597": "covers/cloud/b-1790411096597.jpg"
+    "b-1790411096597": "covers/cloud/b-1790411096597.jpg",
+    "b-1790671466777": "covers/cloud/b-1790671466777.jpg"
   },
-  "savedAt": "2026-09-29T07:26:46.172Z"
+  "savedAt": "2026-09-29T08:44:31.965Z"
 }
