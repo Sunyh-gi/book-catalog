@@ -392,6 +392,14 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   }).length === 0, errors.join(' | ').slice(0, 300));
 
   /* ---------- 场景 H：豆瓣在线路径（mock 本地代理） ---------- */
+  /* 场景 T 用到的「假 Worker」记录：口令鉴权 + 书库读写都打在它身上 */
+  const ghLog = [];
+  /* 预置一份空快照：否则 GET 回 sha/text 皆 null，页面会退回去读真实 Pages（github.io），
+     把线上真书库合并进来 —— 冒烟就不 hermetic 了 */
+  const cloudFiles = {
+    'data/library.json': JSON.stringify({ status: {}, added: [], g: { list: null, map: {} },
+      deleted: [], cover: {}, savedAt: '2026-01-01T00:00:00.000Z' }),
+  };
   function startMock() {
     return new Promise(function (resolve) {
       var srv = http.createServer(function (req, res) {
@@ -452,6 +460,53 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
             pubDate: '2020-05', year: 2020, pages: 300, binding: '平装',
             isbn: '9780000000001', series: '',
             url: 'https://book.douban.com/subject/70001/' });
+        }
+        /* 假 Worker：/gh/*（场景 T）。真 Worker 里 PAT 存在密钥中、页面只带口令，
+           这里只需要能验「请求带没带口令」和「推上去的内容对不对」 */
+        if (u.pathname.indexOf('/gh/') === 0) {
+          if (req.method === 'OPTIONS') {
+            res.writeHead(204, {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
+              'Access-Control-Allow-Headers': '*',
+            });
+            return res.end();
+          }
+          const key = req.headers['x-book-key'] || '';
+          const p = u.searchParams.get('path');
+          const readBody = cb => {
+            let d = '';
+            req.on('data', c => { d += c; });
+            req.on('end', () => cb(d));
+          };
+          if (u.pathname === '/gh/file' && req.method === 'GET') {
+            ghLog.push({ method: 'GET', path: p, key: key });
+            const t = cloudFiles[p];
+            return send(t === undefined ? { sha: null, text: null } : { sha: 'sha-' + p, text: t });
+          }
+          if (u.pathname === '/gh/file' && req.method === 'PUT') {
+            return readBody(d => {
+              let b = {}; try { b = JSON.parse(d); } catch (e) {}
+              ghLog.push({ method: 'PUT', path: b.path, key: key, body: b.content });
+              cloudFiles[b.path] = Buffer.from(String(b.content || ''), 'base64').toString('utf8');
+              send({ ok: true, sha: 'sha-' + b.path });
+            });
+          }
+          if (u.pathname === '/gh/file' && req.method === 'DELETE') {
+            return readBody(d => {
+              let b = {}; try { b = JSON.parse(d); } catch (e) {}
+              ghLog.push({ method: 'DELETE', path: b.path, key: key });
+              delete cloudFiles[b.path];
+              send({ ok: true });
+            });
+          }
+          if (u.pathname === '/gh/list' && req.method === 'GET') {
+            const dir = String(p || '').replace(/\/+$/, '') + '/';
+            const files = Object.keys(cloudFiles).filter(f => f.indexOf(dir) === 0)
+              .map(f => ({ path: f, sha: 'sha-' + f, name: f.slice(dir.length) }));
+            return send({ files: files });
+          }
+          return send({ error: 'not found' }, 404);
         }
         send({ error: 'not found' }, 404);
       });
@@ -700,6 +755,67 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
 
   await page2.evaluate(() => { localStorage.removeItem('booklib.v1'); });
   await page2.close();
+
+  /* ---------- 场景 T：口令 + 自动同步（「完全在线」的写入链路） ----------
+     云端写入不再直连 GitHub，而是带口令走 Worker 的 /gh/*。用假 Worker 锁死五件事：
+     改动后自动推送（防抖，不用点按钮）、请求带 X-Book-Key、推上去的内容含本次改动、
+     成功后清掉「待同步」标记、以及不会无限重复提交（合并云端不算改动）。 */
+  const page3 = await browser.newPage();
+  const err3 = [];
+  page3.on('pageerror', e => err3.push('pageerror: ' + e.message));
+  page3.on('console', m => { if (m.type() === 'error') err3.push('console: ' + m.text()); });
+  await page3.setViewport({ width: 1440, height: 800 });
+  await page3.goto(URL_ONLINE, { waitUntil: 'load' });
+  await sleep(300);
+  await page3.evaluate(d => {
+    localStorage.setItem('booklib.v1', JSON.stringify(d));
+    localStorage.setItem('booklib.cloud', JSON.stringify({ key: 'test-key' }));
+    localStorage.setItem('booklib.doubancloud', JSON.stringify({ url: 'http://127.0.0.1:9999' }));
+  }, FIXTURE);
+  await page3.reload({ waitUntil: 'load' });
+  await sleep(700);
+  const t0 = await page3.evaluate(() => document.getElementById('cloudState').textContent);
+  ok('T0 存了口令后页头显示「已连接云端」', t0 === '已连接云端', t0);
+
+  /* 改一本的状态 → saveStore 标脏 → 4s 防抖后自动推送。按 data-id 点名，
+     不用「第一张卡」——默认按出版日期倒序，第一张是 b-1010 不是 b-1001 */
+  await page3.evaluate(() => {
+    const c = [...document.querySelectorAll('.grid .card')].find(x => x.dataset.id === 'b-1001');
+    c.querySelector('.info').click();
+  });
+  await sleep(250);
+  await page3.click('#statusOverlay .status-opt[data-status="pending"]'); await sleep(250);
+  ok('T1 改动后本机进入「待同步」（DIRTY 落盘）',
+    (await page3.evaluate(() => localStorage.getItem('booklib.dirty'))) === '1');
+  await sleep(7000);
+  const tPuts = ghLog.filter(x => x.method === 'PUT' && x.path === 'data/library.json');
+  ok('T2 防抖后自动推送书库（无需点「立即同步」）', tPuts.length === 1,
+    JSON.stringify(ghLog.map(x => x.method + ' ' + x.path)));
+  ok('T3 推送请求带口令 X-Book-Key', tPuts.length > 0 && tPuts[0].key === 'test-key',
+    tPuts.length ? tPuts[0].key : '（没有 PUT）');
+  let tPayload = null;
+  try { tPayload = JSON.parse(Buffer.from(tPuts[0].body, 'base64').toString('utf8')); } catch (e) {}
+  ok('T4 推送内容含本次改动（10 本书 + 状态已改）',
+    !!tPayload && tPayload.added.length === 10 && tPayload.status['b-1001'] === 'pending',
+    tPayload ? JSON.stringify({ n: tPayload.added.length, st: tPayload.status['b-1001'] }) : '（解析失败）');
+  ok('T5 推送成功后清掉「待同步」标记',
+    (await page3.evaluate(() => localStorage.getItem('booklib.dirty'))) === null);
+  ok('T6 同步状态回到「已同步」',
+    (await page3.evaluate(() => document.getElementById('cloudState').textContent)) === '已同步');
+  const tPutsBefore = ghLog.filter(x => x.method === 'PUT').length;
+  await sleep(6000);
+  const tPutsAfter = ghLog.filter(x => x.method === 'PUT').length;
+  ok('T7 不会无限重复提交（合并云端不算改动）', tPutsAfter === tPutsBefore,
+    tPutsBefore + ' -> ' + tPutsAfter);
+  ok('T8 自动同步链路无 JS 报错', err3.filter(function (e) {
+    return e.indexOf('ERR_CONNECTION_REFUSED') === -1 && e.indexOf('Failed to load resource') === -1;
+  }).length === 0, err3.join(' | ').slice(0, 300));
+  await page3.evaluate(() => {
+    ['booklib.v1', 'booklib.cloud', 'booklib.doubancloud', 'booklib.dirty'].forEach(function (k) {
+      localStorage.removeItem(k);
+    });
+  });
+  await page3.close();
   mock.close();
 
   console.log('\n结果：' + pass + ' PASS / ' + fail + ' FAIL');
