@@ -110,8 +110,11 @@
                                                align-self:flex-end}                    缩进框内、永不裁切、贴底
      照搬：统一 169:240 盒子当豆瓣那个固定框，图用 max-w/max-h 按原始比例缩进去，贴底 + 横向居中。
      贴底而非居中 —— 一行内所有封面底边对齐，像书架上的书；标题基线由盒子高度定死，本来就齐。
-     留白补中性浅底（近白，顺带当「无封面」占位）。 */
-  .cover { position: relative; aspect-ratio: 169 / 240; border-radius: 6px; background: var(--ctrl);
+     留白给白底、不铺色块、也不加描边 —— 原汁原味的封面 + 白底（2026-10-01 定）：
+     比例偏窄的封面（如 0.634）左右各留几像素，铺灰底会在网格里浮出成条灰边，很突兀；
+     豆瓣那个 115×172 的盒子本身也没底色，透出页面白。
+     封面直角（2026-10-01 定）：不写 border-radius，盒子与图都是直角。 */
+  .cover { position: relative; aspect-ratio: 169 / 240; background: #fff;
     overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
   .cover img { max-width: 100%; max-height: 100%; display: block; }
   .cover-ph { font-size: 14px; color: var(--label); align-self: center; }
@@ -171,7 +174,8 @@
   .add-results { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
   .add-row { display: flex; align-items: center; gap: 14px; padding: 12px;
     border: 1px solid var(--stroke-soft); border-radius: 8px; }
-  .add-cover { width: 56px; height: 80px; border-radius: 4px; background: var(--ctrl);
+  /* 候选行小封面：底色同 .cover，同样直角。无图态由 .noimg 单独铺灰，那是「没有封面」的提示，保留 */
+  .add-cover { width: 56px; height: 80px; background: #fff;
     overflow: hidden; display: flex; align-items: center; justify-content: center; flex: 0 0 56px; }
   .add-cover img { max-width: 100%; max-height: 100%; display: block; }
   .cover-ph.small { font-size: 11px; color: var(--label); }
@@ -205,9 +209,9 @@
     background: #fff; border-radius: 12px; padding: 28px;
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }
   .d-row { display: flex; gap: 28px; align-items: center; }
-  /* 详情封面是独图、旁边没有同行可比，不需要「贴底」那套基线对齐，居中即可（尺寸规则与 .cover 同源） */
-  .d-cover { position: relative; width: 200px; height: 284px; flex: 0 0 200px; border-radius: 6px;
-    background: var(--ctrl); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  /* 详情封面是独图、旁边没有同行可比，不需要「贴底」那套基线对齐，居中即可（底色/直角同 .cover） */
+  .d-cover { width: 200px; height: 284px; flex: 0 0 200px;
+    background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
   a.d-cover { cursor: pointer; }
   .d-cover img { max-width: 100%; max-height: 100%; display: block; }
   .d-info { flex: 1; min-width: 0; }
