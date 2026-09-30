@@ -82,6 +82,7 @@ _douban_server.py         # 豆瓣本地代理（127.0.0.1:8765）
 _start_douban_server.cmd  # 双击启动本地代理（Windows）
 _douban_fetch.py          # 豆瓣命令行工具（search / fetch / merge）
 _smoke.js                 # 冒烟测试（需 puppeteer-core + 本机 Edge）
+_touch_check.js           # 移动端触屏检查（390 视口 + CDP 真实触摸，需 puppeteer-core + 本机 Edge）
 _gh_push.js               # 把本地文件同步到本仓库（GitHub Contents API）
 ```
 
