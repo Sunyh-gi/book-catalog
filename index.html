@@ -907,11 +907,12 @@
         var v = genreOf(b);
         if (v) gm[v] = (gm[v] || 0) + 1;
       });
+      /* 作者 / 丛书一律按名称递增（2026-10-01 定，原先按本数降序） */
       var authors = Object.keys(am).sort(function (a, b) {
-        return am[b] - am[a] || a.localeCompare(b, "zh-Hans-CN");
+        return a.localeCompare(b, "zh-Hans-CN");
       });
       var series = Object.keys(sm).sort(function (a, b) {
-        return sm[b] - sm[a] || a.localeCompare(b, "zh-Hans-CN");
+        return a.localeCompare(b, "zh-Hans-CN");
       });
       /* 题材列表 = 字典 ∪ 书中实际出现的 genre（删字典项后书仍可从侧栏访问） */
       var gset = [];
@@ -923,14 +924,15 @@
         navItem("status", "pending", "未购", c.pending, ICONS.pending) +
         '</div><div class="nav-group"><button class="nav-label nav-label-btn" id="genreManageBtn" title="点击管理题材">题材</button>';
       gset.forEach(function (g) { h += navItem("genre", g, g, gm[g] || 0); });
-      h += '</div><div class="nav-group"><div class="nav-label">作者</div>';
-      authors.forEach(function (a) { h += navItem("author", a, a, am[a]); });
       h += '</div>';
       if (series.length) {
         h += '<div class="nav-group"><div class="nav-label">丛书</div>';
         series.forEach(function (s) { h += navItem("series", s, s, sm[s]); });
         h += '</div>';
       }
+      h += '<div class="nav-group"><div class="nav-label">作者</div>';
+      authors.forEach(function (a) { h += navItem("author", a, a, am[a]); });
+      h += '</div>';
       document.getElementById("nav").innerHTML = h;
     }
 
