@@ -30,7 +30,10 @@
   svg { display: block; }
 
   /* ============ 侧栏 ============ */
-  .sidebar { width: 320px; flex: 0 0 320px; border-right: 1px solid var(--line);
+  /* background 不能省：桌面端侧栏在文档流里、底下就是 body 的白底，不写也看着是白的；
+     ≤1023px 改成覆盖式抽屉后它会浮在书库之上，没有底色就会半透明、正文透出来。 */
+  .sidebar { width: 320px; flex: 0 0 320px; background: #fff;
+    border-right: 1px solid var(--line);
     display: flex; flex-direction: column; height: 100%; min-height: 0; }
   .brand { height: 88px; display: flex; align-items: center; gap: 10px; padding: 0 20px;
     border-bottom: 1px solid var(--line); flex: 0 0 auto; }
@@ -53,6 +56,10 @@
   .sidebar-foot { height: 44px; border-top: 1px solid var(--line); display: flex;
     align-items: center; justify-content: space-between; padding: 0 20px;
     font-size: 11px; color: var(--foot); flex: 0 0 auto; }
+
+  /* 移动端专用件：☰ 唤出按钮与抽屉遮罩，桌面端一律不渲染（见文件末「移动端」段） */
+  .nav-toggle { display: none; }
+  .nav-mask { display: none; }
 
   /* ============ 主区（app shell：仅书卡网格滚动，页头/筛选行固定） ============ */
   .main { flex: 1; min-width: 0; height: 100%; overflow: hidden;
@@ -275,6 +282,93 @@
     .main { padding: 14px 48px 28px; }
     .searchbox { width: 220px; }
   }
+
+  /* ============ 移动端与平板竖屏（≤1023px）：侧栏改覆盖式抽屉 ============
+     起因：侧栏固定 320px 不随屏宽收缩 —— 390px 手机上占 82%，主区被压成 0 宽、
+     一屏书都看不到；768px 平板上占 42%，网格只剩 1 列、卡片被拉到 352px。
+     故 1023px 以下整体改用抽屉：侧栏移出屏幕，☰ 唤出，书库区拿回全部宽度。 */
+  @media (max-width: 1023px) {
+    /* 抽屉：默认移出屏幕左侧，body.nav-open 时滑入 */
+    .sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 40;
+      width: 280px; max-width: 84vw; border-right: none;
+      box-shadow: 0 0 48px rgba(0, 0, 0, .16);
+      transform: translateX(-102%); transition: transform .22s ease; }
+    body.nav-open .sidebar { transform: none; }
+    .nav-mask { display: block; position: fixed; inset: 0; z-index: 39;
+      background: rgba(0, 0, 0, .42); opacity: 0; pointer-events: none;
+      transition: opacity .22s ease; }
+    body.nav-open .nav-mask { opacity: 1; pointer-events: auto; }
+
+    .main { padding: 10px 16px 20px; }
+
+    /* 页头：☰ + 标题一行，搜索框独占第二行
+       （300px 搜索框与标题同排会把标题挤成竖排 —— 390px 实测） */
+    .nav-toggle { display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; flex: 0 0 36px; border-radius: 6px; background: var(--ctrl); }
+    .nav-toggle:active { background: var(--sel); }
+    .topbar { height: auto; flex: 0 0 auto; flex-wrap: wrap; gap: 12px;
+      justify-content: flex-start; padding-top: 2px; }
+    .topbar-text { flex: 1 1 auto; min-width: 0; }
+    .topbar-actions { flex: 1 1 100%; }
+    .searchbox { width: 100%; }
+
+    .filterrow { margin-top: 14px; }
+    .gridwrap { margin-top: 18px; }
+
+    /* 平板竖屏一屏 4-5 列；列距 60 在这档太奢侈，收窄到 22 */
+    .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      column-gap: 22px; row-gap: 26px; }
+
+    /* 弹层竖排：200px 封面 + 字段并排会挤爆 358px 的面板 */
+    .add-panel, .detail-panel { padding: 20px; }
+    .search-row { flex-wrap: wrap; }
+    #addTitle { flex: 1 1 100%; }
+    #addIsbn { width: auto; flex: 1 1 120px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .d-row { flex-direction: column; align-items: flex-start; gap: 18px; }
+    .d-cover { width: 140px; height: 199px; flex: 0 0 auto; }
+
+    /* ===== 触屏交互层（2026-09-30）=====
+       桌面靠 :hover 表达可点，触屏没有 hover —— 必须补 :active / 按压态，
+       否则手指按下去毫无反馈。以下规则只在 ≤1023px 生效，桌面零影响。 */
+    * { -webkit-tap-highlight-color: transparent; }
+    /* 卡片长按要弹「标记状态」面板，得先摁住系统的长按行为：
+       文字选中、图片长按菜单（iOS 的「存储图像」/ Android 的上下文菜单） */
+    .card, .nav-item, .status-opt, .add-row, .btn-solid, .btn-add, .btn-search {
+      -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    .cover img { -webkit-touch-callout: none; }
+
+    /* 卡片按压态：缩放由 JS 加 .pressing 控制，不用 :active ——
+       手指落在卡上开始滚屏时 :active 会一直亮着，卡片被"按"着滑走，很怪 */
+    .card { transition: transform .12s ease; }
+    .card.pressing { transform: scale(.975); }
+    .info:active .c-title { color: #2C2C2C; }
+
+    .nav-item:active { background: var(--sel); }
+    .status-opt:active { background: var(--sel); border-color: var(--solid); }
+    .btn-solid:active, .btn-add:active, .btn-search:active { background: #3A3A3A; }
+    .btn-ghost:active, .close-btn:active, .db-pick:active { background: #ECECED; }
+    .sortwrap select:active { background-color: var(--sel); }
+
+    /* 拖动期间禁用过渡与文本选择，跟手才不"粘"（过渡由 JS 临时置 none，这里兜底） */
+    .sidebar.nav-dragging, .nav-mask.nav-dragging { transition: none !important; }
+    .nav-dragging { -webkit-user-select: none; user-select: none; }
+
+    /* 滚到顶/底时不要把滚动链交给外层 —— 手机上防"下拉刷新"被误触发 */
+    .gridwrap, .nav, .overlay { overscroll-behavior: contain; }
+  }
+
+  /* ============ 手机（≤767px）：进一步压紧 ============ */
+  @media (max-width: 767px) {
+    /* 390px 下 3 列（≈110px/卡）：列距再收到 14，否则 60px 列距吃掉半屏 */
+    .grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+      column-gap: 14px; row-gap: 22px; }
+    .topbar h1 { font-size: 18px; line-height: 26px; }
+    .info { margin-top: 7px; }
+    .c-title { font-size: 13px; line-height: 19px; }
+    .c-author { font-size: 11px; line-height: 15px; margin-top: 3px; }
+    .filterrow { flex-wrap: wrap; }
+  }
 </style>
 </head>
 <body>
@@ -301,9 +395,16 @@
     </div>
   </aside>
 
+  <div class="nav-mask" id="navMask"></div>
+
   <div class="main">
     <div class="content">
       <header class="topbar">
+        <button class="nav-toggle" id="navToggle" type="button" aria-label="打开导航" aria-controls="nav">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" stroke="#4F4F4F" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
         <div class="topbar-text">
           <h1 id="pageTitle">全部藏书</h1>
           <p class="page-meta" id="pageMeta"></p>
@@ -1674,12 +1775,27 @@
     }
 
     /* ---------- 事件绑定 ---------- */
+    /* 抽屉式侧栏（≤1023px）：☰ 唤出，点遮罩 / 选中项 / 放大回桌面宽度时收起。
+       桌面端 ☰ 与遮罩被 CSS 藏起，这段逻辑空转，不影响原有布局。 */
+    function setNavOpen(open) {
+      document.body.classList.toggle("nav-open", open);
+      document.getElementById("navToggle").setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    document.getElementById("navToggle").addEventListener("click", function () {
+      setNavOpen(!document.body.classList.contains("nav-open"));
+    });
+    document.getElementById("navMask").addEventListener("click", function () { setNavOpen(false); });
+    window.addEventListener("resize", function () {
+      if (window.innerWidth > 1023) setNavOpen(false);
+    });
+
     document.getElementById("nav").addEventListener("click", function (e) {
-      if (e.target.closest("#genreManageBtn")) { openGenreManage(); return; }
+      if (e.target.closest("#genreManageBtn")) { openGenreManage(); setNavOpen(false); return; }
       var btn = e.target.closest(".nav-item");
       if (!btn) return;
       state.view = { kind: btn.dataset.kind, value: btn.dataset.value || "" };
       renderAll();
+      setNavOpen(false);
     });
     document.getElementById("grid").addEventListener("click", function (e) {
       var card = e.target.closest(".card");
@@ -1858,12 +1974,206 @@
 
     [["statusOverlay", closeStatus], ["addOverlay", closeAdd], ["detailOverlay", closeDetail],
      ["genreOverlay", closeGenre], ["cloudOverlay", closeCloud]].forEach(function (pair) {
-      document.getElementById(pair[0]).addEventListener("mousedown", function (e) {
+      var ov = document.getElementById(pair[0]);
+      ov.addEventListener("mousedown", function (e) {
         if (e.target === e.currentTarget) pair[1]();
       });
+      bindSheetDismiss(ov, pair[1]);
     });
+
+    /* ---------- 触屏交互层（≤1023px）：抽屉滑动 / 弹层下滑关闭 / 卡片长按 ----------
+       全部只在窄屏生效：桌面窗口一旦 >1023px 这些手势一律不接管（鼠标也没有 touch 事件）。
+       断点与 CSS 同一套（1023），改一处要改两处。 */
+    var TOUCH_MAX = 1023;
+    function isTouchLayout() { return window.innerWidth <= TOUCH_MAX; }
+    function anyOverlayOpen() {
+      return ["statusOverlay", "addOverlay", "detailOverlay", "genreOverlay", "cloudOverlay"]
+        .some(function (id) { return !document.getElementById(id).hidden; });
+    }
+    /* 拖动/长按结束后浏览器还会补一个 click —— 不吞掉就会"拖完抽屉顺手点开了详情"。
+       用定时器兜底：合成 click 紧跟 touchend 发生，400ms 足够，且不会误吞下一次点击。 */
+    var suppressTap = false, suppressTimer = null;
+    function armSuppressTap() {
+      suppressTap = true;
+      if (suppressTimer) clearTimeout(suppressTimer);
+      suppressTimer = setTimeout(function () { suppressTap = false; suppressTimer = null; }, 400);
+    }
+    document.addEventListener("click", function (e) {
+      if (!suppressTap) return;
+      suppressTap = false;
+      if (suppressTimer) { clearTimeout(suppressTimer); suppressTimer = null; }
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
+
+    /* ① 抽屉：左边缘右滑拉出 / 打开后左滑收起（跟手 + 松手吸附） */
+    var navDrag = null;
+    function navSettle(open) {
+      setNavOpen(open);
+      var sb = document.querySelector(".sidebar"), mk = document.getElementById("navMask");
+      sb.style.transition = "transform .22s ease";
+      mk.style.transition = "opacity .22s ease";
+      sb.style.transform = open ? "translateX(0)" : "translateX(-102%)";
+      mk.style.opacity = open ? "1" : "0";
+      mk.style.pointerEvents = open ? "auto" : "none";
+      /* 落位后把内联样式清掉，交还给 CSS 类（两边终值一致，所以看不出跳变） */
+      setTimeout(function () {
+        sb.style.transition = ""; sb.style.transform = "";
+        mk.style.transition = ""; mk.style.opacity = ""; mk.style.pointerEvents = "";
+      }, 240);
+    }
+    document.addEventListener("touchstart", function (e) {
+      if (!isTouchLayout() || e.touches.length !== 1 || anyOverlayOpen()) return;
+      var t = e.touches[0];
+      var open = document.body.classList.contains("nav-open");
+      /* 关着的时候只在左边缘 24px 内起手，否则会和卡片的横向手势打架；
+         开着的时候全屏都能往左拨（此时遮罩盖着，下面本来也点不到） */
+      if (open) navDrag = { mode: "close", x: t.clientX, y: t.clientY, p: 1 };
+      else if (t.clientX <= 24) navDrag = { mode: "open", x: t.clientX, y: t.clientY, p: 0 };
+    }, { passive: true });
+    document.addEventListener("touchmove", function (e) {
+      if (!navDrag || e.touches.length !== 1) return;
+      var t = e.touches[0];
+      var dx = t.clientX - navDrag.x, dy = t.clientY - navDrag.y;
+      if (!navDrag.active) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        /* 纵向为主 → 让给页面滚动（抽屉里的 .nav 也要能上下滚），本次手势不再接管 */
+        if (Math.abs(dx) <= Math.abs(dy) * 1.2) { navDrag = null; return; }
+        navDrag.active = true;
+        armSuppressTap();
+        var sb = document.querySelector(".sidebar"), mk = document.getElementById("navMask");
+        navDrag.sb = sb; navDrag.mk = mk; navDrag.w = sb.offsetWidth;
+        sb.classList.add("nav-dragging"); mk.classList.add("nav-dragging");
+        sb.style.transition = "none"; mk.style.transition = "none";
+      }
+      var w = navDrag.w;
+      var p = navDrag.mode === "open" ? dx / w : 1 + dx / w;
+      navDrag.p = Math.max(0, Math.min(1, p));
+      navDrag.sb.style.transform = "translateX(" + ((navDrag.p - 1) * w) + "px)";
+      navDrag.mk.style.opacity = navDrag.p;
+      navDrag.mk.style.pointerEvents = navDrag.p > 0.01 ? "auto" : "none";
+      e.preventDefault();
+    }, { passive: false });
+    function navDragFinish() {
+      var d = navDrag; navDrag = null;
+      if (!d || !d.active) return;
+      d.sb.classList.remove("nav-dragging"); d.mk.classList.remove("nav-dragging");
+      navSettle(d.p > 0.4);          /* 过半即吸附到位，不过半弹回去 */
+    }
+    document.addEventListener("touchend", function () {
+      if (!navDrag) return;
+      if (!navDrag.active) { navDrag = null; return; }
+      navDragFinish();
+    });
+    document.addEventListener("touchcancel", function () {
+      if (navDrag && navDrag.active) navDragFinish(); else navDrag = null;
+    });
+
+    /* ② 弹层下滑关闭：面板跟着手指走，松手看位移与速度决定关还是弹回。
+       只在面板没被滚到中间时接管（scrollTop > 0 说明用户在翻内容，不能抢）。 */
+    function bindSheetDismiss(overlay, closeFn) {
+      var panel = overlay.firstElementChild;
+      if (!panel) return;
+      var st = null;
+      overlay.addEventListener("touchstart", function (e) {
+        if (!isTouchLayout() || e.touches.length !== 1) return;
+        var sc = panel.scrollHeight > panel.clientHeight + 1 ? panel : overlay;
+        if (sc.scrollTop > 0) return;
+        var t = e.touches[0];
+        st = { x: t.clientX, y: t.clientY, dy: 0, active: false, t0: Date.now() };
+      }, { passive: true });
+      overlay.addEventListener("touchmove", function (e) {
+        if (!st || e.touches.length !== 1) return;
+        var t = e.touches[0], dy = t.clientY - st.y, dx = t.clientX - st.x;
+        if (!st.active) {
+          if (Math.abs(dy) < 8 && Math.abs(dx) < 8) return;
+          /* 横向或上滑都不接管：上滑是要看下面的内容 */
+          if (Math.abs(dx) > Math.abs(dy) || dy < 0) { st = null; return; }
+          st.active = true;
+          armSuppressTap();
+          panel.style.transition = "none"; overlay.style.transition = "none";
+        }
+        st.dy = Math.max(0, dy);
+        panel.style.transform = "translateY(" + st.dy + "px)";
+        /* 遮罩跟着变淡，拉到底时背景正好全透明 —— 手感才对得上 */
+        overlay.style.background = "rgba(0,0,0," + (0.45 * Math.max(0, 1 - st.dy / 300)).toFixed(3) + ")";
+        e.preventDefault();
+      }, { passive: false });
+      function settle(dismiss) {
+        panel.style.transition = "transform .2s ease";
+        overlay.style.transition = "background .2s ease";
+        if (dismiss) {
+          /* 用视口高而不是面板高：面板是居中的，translateY(自身高) 未必能移出屏幕 */
+          panel.style.transform = "translateY(" + window.innerHeight + "px)";
+          overlay.style.background = "rgba(0,0,0,0)";
+          setTimeout(function () {
+            closeFn();
+            /* 内联样式必须清干净 —— 否则下次打开时面板还停在屏外 */
+            panel.style.transition = ""; panel.style.transform = "";
+            overlay.style.transition = ""; overlay.style.background = "";
+          }, 190);
+        } else {
+          panel.style.transform = "";
+          overlay.style.background = "";
+          setTimeout(function () {
+            panel.style.transition = ""; overlay.style.transition = "";
+          }, 220);
+        }
+      }
+      overlay.addEventListener("touchend", function () {
+        if (!st) return;
+        var s = st; st = null;
+        if (!s.active) return;
+        var v = s.dy / Math.max(1, Date.now() - s.t0);
+        settle(s.dy > 96 || v > 0.45);      /* 拉过 96px，或甩得够快，都算要关 */
+      });
+      overlay.addEventListener("touchcancel", function () {
+        if (!st) return;
+        var s = st; st = null;
+        if (s.active) settle(false);
+      });
+    }
+
+    /* ③ 卡片长按 → 标记状态面板（触屏上卡片只有「点封面看详情 / 点文字改标记」两块，
+       长按让整张卡都能唤出标记面板，比去够那两行小字顺手得多）。
+       短按语义完全不变，长按只是多一条路径。 */
+    var LP_MS = 480, lpTimer = null, lpCard = null, lpFrom = null, lpFired = false;
+    function lpCancel() {
+      if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+      if (lpCard) lpCard.classList.remove("pressing");
+      lpCard = null; lpFrom = null;
+    }
+    document.getElementById("grid").addEventListener("touchstart", function (e) {
+      if (!isTouchLayout() || e.touches.length !== 1) return;
+      var card = e.target.closest(".card");
+      if (!card || !card.dataset.id) return;
+      var t = e.touches[0];
+      lpCard = card; lpFrom = { x: t.clientX, y: t.clientY }; lpFired = false;
+      card.classList.add("pressing");
+      lpTimer = setTimeout(function () {
+        lpTimer = null;
+        lpFired = true;
+        armSuppressTap();
+        card.classList.remove("pressing");
+        if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) {} }
+        openStatus(card.dataset.id);
+      }, LP_MS);
+    }, { passive: true });
+    document.getElementById("grid").addEventListener("touchmove", function (e) {
+      if (!lpCard || !lpFrom || e.touches.length !== 1) return;
+      var t = e.touches[0];
+      /* 手指动了就是滚屏/滑动，不是长按 */
+      if (Math.abs(t.clientX - lpFrom.x) > 8 || Math.abs(t.clientY - lpFrom.y) > 8) lpCancel();
+    }, { passive: true });
+    document.getElementById("grid").addEventListener("touchend", lpCancel);
+    document.getElementById("grid").addEventListener("touchcancel", lpCancel);
+    document.getElementById("grid").addEventListener("contextmenu", function (e) {
+      /* 长按已经弹出标记面板了，别再叠一层系统菜单 */
+      if (lpFired && isTouchLayout()) { e.preventDefault(); lpFired = false; }
+    });
+
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") { closeStatus(); closeAdd(); closeDetail(); closeGenre(); closeCloud(); }
+      if (e.key === "Escape") { setNavOpen(false); closeStatus(); closeAdd(); closeDetail(); closeGenre(); closeCloud(); }
     });
 
     /* ---------- 启动 ---------- */
