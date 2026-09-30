@@ -61,7 +61,9 @@
     "b-1790584421908": "owned",
     "b-1790352597826": "owned",
     "b-1790689775123": "owned",
-    "b-1790781549463": "owned"
+    "b-1790781549463": "owned",
+    "b-1790781688578": "owned",
+    "b-1790781964617": "owned"
   },
   "added": [
     {
@@ -1298,6 +1300,44 @@
       "addedAt": "2026-09-30",
       "doubanUrl": "https://book.douban.com/subject/35517022/",
       "cover": ""
+    },
+    {
+      "id": "b-1790781964617",
+      "title": "夜莺与玫瑰",
+      "author": "[英] 奥斯卡·王尔德",
+      "translator": "张乐",
+      "subtitle": "中英双语",
+      "publisher": "湖南文艺出版社",
+      "year": 2022,
+      "pubDate": "2022-01",
+      "pages": 432,
+      "binding": "精装",
+      "isbn": "9787572603709",
+      "genre": "文学",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-09-30",
+      "doubanUrl": "https://book.douban.com/subject/35737365/",
+      "cover": ""
+    },
+    {
+      "id": "b-1790783344197",
+      "title": "太阳的阴影",
+      "author": "[波] 雷沙德·卡普希钦斯基",
+      "translator": "毛蕊",
+      "subtitle": "深入非洲的旅程",
+      "publisher": "民主与建设出版社",
+      "year": 2025,
+      "pubDate": "2025-06",
+      "pages": 456,
+      "binding": "精装",
+      "isbn": "9787513949033",
+      "genre": "社科",
+      "series": "理想国·卡普希钦斯基作品系列",
+      "status": "pending",
+      "addedAt": "2026-09-30",
+      "doubanUrl": "https://book.douban.com/subject/37315103/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1412,7 +1452,10 @@
     "b-1790411096597": "covers/cloud/b-1790411096597.jpg",
     "b-1790671466777": "covers/cloud/b-1790671466777.jpg",
     "b-1790689775123": "covers/cloud/b-1790689775123.jpg",
-    "b-1790781549463": "covers/cloud/b-1790781549463.jpg"
+    "b-1790781549463": "covers/cloud/b-1790781549463.jpg",
+    "b-1790781688578": "covers/cloud/b-1790781688578.jpg",
+    "b-1790781964617": "covers/cloud/b-1790781964617.jpg",
+    "b-1790783344197": "covers/cloud/b-1790783344197.jpg"
   },
-  "savedAt": "2026-09-30T15:19:17.314Z"
+  "savedAt": "2026-09-30T15:49:10.405Z"
 }
