@@ -58,7 +58,10 @@
     "b-1790527003958": "owned",
     "b-1790526114904": "owned",
     "b-1790527259068": "owned",
-    "b-1790584421908": "owned"
+    "b-1790584421908": "owned",
+    "b-1790352597826": "owned",
+    "b-1790689775123": "owned",
+    "b-1790781549463": "owned"
   },
   "added": [
     {
@@ -1257,6 +1260,44 @@
       "addedAt": "2026-09-29",
       "doubanUrl": "https://book.douban.com/subject/30424945/",
       "cover": ""
+    },
+    {
+      "id": "b-1790781549463",
+      "title": "夏日走过山间",
+      "author": "[美] 约翰·缪尔",
+      "translator": "邱婷婷",
+      "subtitle": null,
+      "publisher": "上海译文出版社",
+      "year": 2014,
+      "pubDate": "2014-07",
+      "pages": 280,
+      "binding": "精装",
+      "isbn": "9787532764303",
+      "genre": "文学",
+      "series": "山杯书系",
+      "status": "pending",
+      "addedAt": "2026-09-30",
+      "doubanUrl": "https://book.douban.com/subject/25919821/",
+      "cover": ""
+    },
+    {
+      "id": "b-1790781688578",
+      "title": "鹿川有许多粪",
+      "author": "[韩] 李沧东",
+      "translator": "春喜",
+      "subtitle": null,
+      "publisher": "武汉大学出版社",
+      "year": 2021,
+      "pubDate": "2021-08",
+      "pages": 314,
+      "binding": "平装",
+      "isbn": "9787307223950",
+      "genre": "文学",
+      "series": "鹿书：李沧东作品",
+      "status": "pending",
+      "addedAt": "2026-09-30",
+      "doubanUrl": "https://book.douban.com/subject/35517022/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1370,7 +1411,8 @@
     "b-1790409776999": "covers/cloud/b-1790409776999.jpg",
     "b-1790411096597": "covers/cloud/b-1790411096597.jpg",
     "b-1790671466777": "covers/cloud/b-1790671466777.jpg",
-    "b-1790689775123": "covers/cloud/b-1790689775123.jpg"
+    "b-1790689775123": "covers/cloud/b-1790689775123.jpg",
+    "b-1790781549463": "covers/cloud/b-1790781549463.jpg"
   },
-  "savedAt": "2026-09-29T13:49:41.722Z"
+  "savedAt": "2026-09-30T15:19:17.314Z"
 }
