@@ -1376,6 +1376,25 @@
       "addedAt": "2026-09-30",
       "doubanUrl": "https://book.douban.com/subject/36669377/",
       "cover": ""
+    },
+    {
+      "id": "b-1790794746737",
+      "title": "筚路维艰",
+      "author": "萧冬连",
+      "translator": "",
+      "subtitle": "中国社会主义路径的五次选择",
+      "publisher": "社会科学文献出版社",
+      "year": 2014,
+      "pubDate": "2014-10",
+      "pages": 246,
+      "binding": "平装",
+      "isbn": "9787509763247",
+      "genre": "历史",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-09-30",
+      "doubanUrl": "https://book.douban.com/subject/26171466/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1497,7 +1516,8 @@
     "b-1790781964617": "covers/cloud/b-1790781964617.jpg",
     "b-1790783344197": "covers/cloud/b-1790783344197.jpg",
     "b-1790784148588": "covers/cloud/b-1790784148588.jpg",
-    "b-1790793788375": "covers/cloud/b-1790793788375.jpg"
+    "b-1790793788375": "covers/cloud/b-1790793788375.jpg",
+    "b-1790794746737": "covers/cloud/b-1790794746737.jpg"
   },
-  "savedAt": "2026-09-30T18:43:13.696Z"
+  "savedAt": "2026-09-30T18:59:12.849Z"
 }
