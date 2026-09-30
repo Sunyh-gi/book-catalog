@@ -16,6 +16,7 @@
     --ctrl: #F5F5F6;     /* 控件底 */
     --sel: #F1F1F2;      /* 选中态底 */
     --solid: #4F4F4F;    /* 实心块 / 按钮 / 导航图标 */
+    --owned: #34A853;    /* 已购标记（绿点） */
     --stroke-soft: #E8E8E8;
   }
   html, body { height: 100%; overflow: hidden; }
@@ -118,11 +119,13 @@
     overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
   .cover img { max-width: 100%; max-height: 100%; display: block; }
   .cover-ph { font-size: 14px; color: var(--label); align-self: center; }
-  .dot-owned { position: absolute; top: 10px; left: 10px; width: 6px; height: 6px;
-    border-radius: 3px; background: var(--solid); }
   .info { margin-top: 10px; cursor: pointer; }
-  .c-title { font-size: 14px; line-height: 21px; font-weight: 500; color: var(--ink);
+  /* 书名 + 已购绿点同行：点跟在书名右侧。书名可收缩（min-width:0），过长时点不会被挤出卡片 */
+  .c-head { display: flex; align-items: center; gap: 6px; }
+  .c-title { min-width: 0; font-size: 14px; line-height: 21px; font-weight: 500; color: var(--ink);
     overflow: hidden; text-overflow: ellipsis; }
+  /* 已购标记：跟着书名的绿点（2026-10-01 从封面左上角移来，灰 → 绿） */
+  .dot-owned { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 3px; background: var(--owned); }
   .c-author { margin-top: 5px; font-size: 12px; line-height: 17px; color: var(--assist);
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .info:hover .c-title { color: #2C2C2C; }
@@ -149,6 +152,9 @@
   .status-opt.selected { background: var(--sel); border-color: var(--solid);
     color: var(--solid); font-weight: 500; }
   .status-opt.selected .dot { background: var(--solid); border-color: var(--solid); }
+  /* 「已购」的圆点恒为绿 —— 它是状态本身的颜色，与是否选中无关（2026-10-01）。
+     必须排在 .selected 之后：两者同为 (0,2,1) 特异性，后者胜，选中已购时点才不会被刷回灰色。 */
+  .status-opt[data-status="owned"] .dot { border-color: var(--owned); background: var(--owned); }
 
   .add-panel { width: 800px; max-width: 100%; max-height: 84vh; overflow: auto;
     background: #fff; border-radius: 12px; padding: 28px;
@@ -947,10 +953,10 @@
         ? '<img src="' + esc(coverOf(b)) + '" alt="' + esc(b.title) + '">'
         : '<span class="cover-ph">封面</span>';
       return '<article class="card" data-id="' + esc(b.id) + '">' +
-        '<div class="cover">' + cover +
-        (st === "owned" ? '<span class="dot-owned" title="已购"></span>' : '') + '</div>' +
+        '<div class="cover">' + cover + '</div>' +
         '<div class="info" data-id="' + esc(b.id) + '" title="点击修改标记">' +
-        '<h3 class="c-title">' + esc(b.title) + '</h3>' +
+        '<div class="c-head"><h3 class="c-title">' + esc(b.title) + '</h3>' +
+        (st === "owned" ? '<span class="dot-owned" title="已购"></span>' : '') + '</div>' +
         '<p class="c-author">' + esc(b.author) + '</p>' +
         '</div></article>';
     }
