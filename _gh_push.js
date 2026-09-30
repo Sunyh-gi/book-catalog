@@ -32,6 +32,7 @@ const STATIC = [
   "_douban_fetch.py",
   "_douban_server.py",
   "_smoke.js",
+  "_touch_check.js",
   "_gh_push.js",
   "_start_douban_server.cmd"
 ];
