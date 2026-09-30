@@ -103,10 +103,18 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     column-gap: 60px; row-gap: 56px; }
   .card { display: flex; flex-direction: column; }
-  .cover { position: relative; aspect-ratio: 169 / 240; border-radius: 6px; background: #E9E9EC;
-    overflow: hidden; display: flex; align-items: center; justify-content: center; }
-  .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .cover-ph { font-size: 14px; color: var(--label); }
+  /* 封面显示照搬豆瓣「新书速递」（2026-10-01 改）。豆瓣 book.douban.com 首页真实样式：
+       .books-express .list-express .cover{width:115px;height:172px;overflow:hidden}  固定盒子 → 一行等高
+       .books-express .list-express .cover a{display:flex;justify-content:center}      横向居中
+       .books-express .list-express .cover img{max-width:115px;max-height:172px;
+                                               align-self:flex-end}                    缩进框内、永不裁切、贴底
+     照搬：统一 169:240 盒子当豆瓣那个固定框，图用 max-w/max-h 按原始比例缩进去，贴底 + 横向居中。
+     贴底而非居中 —— 一行内所有封面底边对齐，像书架上的书；标题基线由盒子高度定死，本来就齐。
+     留白补中性浅底（近白，顺带当「无封面」占位）。 */
+  .cover { position: relative; aspect-ratio: 169 / 240; border-radius: 6px; background: var(--ctrl);
+    overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
+  .cover img { max-width: 100%; max-height: 100%; display: block; }
+  .cover-ph { font-size: 14px; color: var(--label); align-self: center; }
   .dot-owned { position: absolute; top: 10px; left: 10px; width: 6px; height: 6px;
     border-radius: 3px; background: var(--solid); }
   .info { margin-top: 10px; cursor: pointer; }
@@ -163,9 +171,9 @@
   .add-results { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
   .add-row { display: flex; align-items: center; gap: 14px; padding: 12px;
     border: 1px solid var(--stroke-soft); border-radius: 8px; }
-  .add-cover { width: 56px; height: 80px; border-radius: 4px; background: #E9E9EC;
+  .add-cover { width: 56px; height: 80px; border-radius: 4px; background: var(--ctrl);
     overflow: hidden; display: flex; align-items: center; justify-content: center; flex: 0 0 56px; }
-  .add-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .add-cover img { max-width: 100%; max-height: 100%; display: block; }
   .cover-ph.small { font-size: 11px; color: var(--label); }
   .add-info { flex: 1; min-width: 0; }
   .add-info h4 { font-size: 14px; font-weight: 500; color: var(--ink); line-height: 21px; }
@@ -197,10 +205,11 @@
     background: #fff; border-radius: 12px; padding: 28px;
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }
   .d-row { display: flex; gap: 28px; align-items: center; }
-  .d-cover { width: 200px; height: 284px; flex: 0 0 200px; border-radius: 6px;
-    background: #E9E9EC; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  /* 详情封面是独图、旁边没有同行可比，不需要「贴底」那套基线对齐，居中即可（尺寸规则与 .cover 同源） */
+  .d-cover { position: relative; width: 200px; height: 284px; flex: 0 0 200px; border-radius: 6px;
+    background: var(--ctrl); overflow: hidden; display: flex; align-items: center; justify-content: center; }
   a.d-cover { cursor: pointer; }
-  .d-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .d-cover img { max-width: 100%; max-height: 100%; display: block; }
   .d-info { flex: 1; min-width: 0; }
   .d-info h2 { font-size: 20px; font-weight: 500; color: var(--ink); line-height: 28px; }
   .d-sub { margin-top: 4px; font-size: 13px; line-height: 20px; color: var(--assist); }
