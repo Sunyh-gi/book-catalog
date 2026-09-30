@@ -111,8 +111,19 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   const navTexts = await page.$$eval('#nav .nav-item', els => els.map(e => e.textContent.trim()));
   ok('A4 侧栏含 全部/已购/未购', navTexts.some(t => t.indexOf('全部') === 0) &&
     navTexts.some(t => t.indexOf('已购') === 0) && navTexts.some(t => t.indexOf('未购') === 0));
-  const groups = await page.$$eval('#nav .nav-group', els => els.length);
-  ok('A5 侧栏分组 = 4（书目/题材/作者/丛书）', groups === 4, 'got ' + groups);
+  /* A5 侧栏分组：顺序固定为 书目总览 → 题材 → 丛书 → 作者，且丛书/作者按名称递增 */
+  const navGroups = await page.$$eval('#nav .nav-group', els => els.map(g => ({
+    label: (g.querySelector('.nav-label') || { textContent: '' }).textContent.trim(),
+    items: Array.from(g.querySelectorAll('.nav-item .nav-text')).map(e => e.textContent.trim())
+  })));
+  ok('A5 侧栏分组顺序 = 书目总览/题材/丛书/作者',
+    navGroups.map(g => g.label).join(',') === '书目总览,题材,丛书,作者',
+    'got ' + navGroups.map(g => g.label).join(','));
+  const asc = a => a.every((v, i) => i === 0 || a[i - 1].localeCompare(v, 'zh-Hans-CN') <= 0);
+  const seriesItems = (navGroups.find(g => g.label === '丛书') || { items: [] }).items;
+  const authorItems = (navGroups.find(g => g.label === '作者') || { items: [] }).items;
+  ok('A5b 丛书 / 作者按名称递增', asc(seriesItems) && asc(authorItems),
+    '丛书=' + seriesItems.join('/') + ' 作者=' + authorItems.join('/'));
 
   const dots = await page.$$eval('.grid .dot-owned', els => els.length);
   ok('A6 已购圆点 = 7', dots === 7, 'got ' + dots);
