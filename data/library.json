@@ -1338,6 +1338,25 @@
       "addedAt": "2026-09-30",
       "doubanUrl": "https://book.douban.com/subject/37315103/",
       "cover": ""
+    },
+    {
+      "id": "b-1790784148588",
+      "title": "十一个时区之旅",
+      "author": "[波] 雷沙德·卡普希钦斯基",
+      "translator": "刘伟",
+      "subtitle": "帝国五十年",
+      "publisher": "民主与建设出版社",
+      "year": 2025,
+      "pubDate": "2025-01",
+      "pages": 440,
+      "binding": "精装",
+      "isbn": "9787513946391",
+      "genre": "社科",
+      "series": "理想国·卡普希钦斯基作品系列",
+      "status": "pending",
+      "addedAt": "2026-09-30",
+      "doubanUrl": "https://book.douban.com/subject/36914677/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1455,7 +1474,8 @@
     "b-1790781549463": "covers/cloud/b-1790781549463.jpg",
     "b-1790781688578": "covers/cloud/b-1790781688578.jpg",
     "b-1790781964617": "covers/cloud/b-1790781964617.jpg",
-    "b-1790783344197": "covers/cloud/b-1790783344197.jpg"
+    "b-1790783344197": "covers/cloud/b-1790783344197.jpg",
+    "b-1790784148588": "covers/cloud/b-1790784148588.jpg"
   },
-  "savedAt": "2026-09-30T15:49:10.405Z"
+  "savedAt": "2026-09-30T16:02:34.255Z"
 }
