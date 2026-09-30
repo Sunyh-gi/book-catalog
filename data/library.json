@@ -1395,6 +1395,25 @@
       "addedAt": "2026-09-30",
       "doubanUrl": "https://book.douban.com/subject/26171466/",
       "cover": ""
+    },
+    {
+      "id": "b-1790795205361",
+      "title": "天朝的崩溃",
+      "author": "茅海建",
+      "translator": "",
+      "subtitle": "鸦片战争再研究",
+      "publisher": "生活·读书·新知三联书店",
+      "year": 2014,
+      "pubDate": "2014-10",
+      "pages": 592,
+      "binding": "精装",
+      "isbn": "9787108050656",
+      "genre": "历史",
+      "series": "三联·哈佛燕京学术丛书",
+      "status": "pending",
+      "addedAt": "2026-09-30",
+      "doubanUrl": "https://book.douban.com/subject/25935941/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1517,7 +1536,8 @@
     "b-1790783344197": "covers/cloud/b-1790783344197.jpg",
     "b-1790784148588": "covers/cloud/b-1790784148588.jpg",
     "b-1790793788375": "covers/cloud/b-1790793788375.jpg",
-    "b-1790794746737": "covers/cloud/b-1790794746737.jpg"
+    "b-1790794746737": "covers/cloud/b-1790794746737.jpg",
+    "b-1790795205361": "covers/cloud/b-1790795205361.jpg"
   },
-  "savedAt": "2026-09-30T18:59:12.849Z"
+  "savedAt": "2026-09-30T19:06:50.764Z"
 }
