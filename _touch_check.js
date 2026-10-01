@@ -30,6 +30,14 @@ const PAGE_URL = 'file:///' + path.join(ROOT, 'index.html').replace(/\\/g, '/') 
 const TITLES = ['百年孤独', '人类简史', '活着', '置身事内', '波斯札记', '世界小史',
   '城南旧事', '一九八四', '四川', '青海', '魏晋南北朝', '地道风物003'];
 const GENRES = ['文学小说', '历史与人文', '地理', '艺术'];
+/* ⚠ 上面 12 本最长 8 字，390 档（卡片 110px / 书名 13px）**一行就放得下** ——
+   场景 G 要测「书名折行时绿点位置」，必须有本会折行的书，故另加一本 9 字长书名。
+   pubDate 取最早 → 默认排序（出版日期新→旧）把它压到最后，不影响首卡用例 */
+const LONG_TITLE_BOOK = {
+  id: 'b-2999', title: '地道风物012·火锅', subtitle: '', author: '[中] 中国国家地理', translator: '',
+  publisher: '中信出版社', year: 2019, pubDate: '2019-01', pages: 260, binding: '平装', isbn: '',
+  genre: '地理', series: '', status: 'owned', addedAt: '2026-09-21', doubanUrl: '', cover: ''
+};
 const FIXTURE = {
   status: {},
   added: TITLES.map(function (t, i) {
@@ -39,7 +47,7 @@ const FIXTURE = {
       pages: 300, binding: '平装', isbn: '', genre: GENRES[i % 4], series: '',
       status: i % 3 === 0 ? 'pending' : 'owned', addedAt: '2026-09-21', doubanUrl: '', cover: ''
     };
-  }),
+  }).concat([LONG_TITLE_BOOK]),
   g: { list: null, map: {} }, cover: {}, deleted: []
 };
 
@@ -278,8 +286,48 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   ok('E3 拉过 96px → 松手后关闭', !s.detail, 'detailOverlay=' + s.detail);
   await reset();
 
+  /* ---------- 场景 G：书名折行时，已购绿点必须紧跟最后一个字 ----------
+     2026-10-01 用户报障（手机截图）：两行的「地道风物012·火锅」绿点跑到卡片最右侧。
+     根因是 .c-head 当时是 display:flex、.c-title 作 flex item —— 书名一折行，
+     item 宽度就撑满整行，点被顶到最右、还相对整个多行块垂直居中。
+     修法 = 点写进 <h3> 内随文字流。这里用 Range 取「末字」的真实矩形来卡位置。 */
+  console.log('\n[6/7] 场景 G：折行书名的已购绿点');
+  const dotRows = await page.evaluate(() => {
+    const out = [];
+    document.querySelectorAll('.grid .card').forEach(card => {
+      const h3 = card.querySelector('.c-title'), dot = card.querySelector('.dot-owned');
+      if (!h3 || !dot) return;
+      const tn = h3.firstChild;
+      const r = document.createRange();
+      r.setStart(tn, tn.length - 1); r.setEnd(tn, tn.length);
+      const last = r.getBoundingClientRect(), d = dot.getBoundingClientRect(), hb = h3.getBoundingClientRect();
+      out.push({
+        title: tn.data, inH3: h3.contains(dot),
+        lines: hb.height / parseFloat(getComputedStyle(h3).lineHeight),
+        gap: d.left - last.right,
+        dy: (d.top + d.height / 2) - (last.top + last.height / 2),
+      });
+    });
+    return out;
+  });
+  /* 先确认夹具真的覆盖到「折行」—— 全是单行的话这条用例等于没测
+     （同 A5 只数分组个数、顺序怎么排都能过的教训） */
+  const wrapped = dotRows.filter(r => r.lines >= 1.5);
+  ok('G0 夹具含折行书名（用例真覆盖折行）', wrapped.length > 0,
+    '折行 ' + wrapped.length + '/' + dotRows.length + ' 本');
+  ok('G1 绿点在书名文字流内（不是并排的兄弟节点）',
+    dotRows.length > 0 && dotRows.every(r => r.inH3),
+    dotRows.filter(r => !r.inH3).map(r => r.title).join('/'));
+  const badGap = dotRows.filter(r => !(r.gap >= 2 && r.gap <= 12));
+  ok('G2 绿点紧跟末字（间距 ≈ 6px，不是卡片最右）', badGap.length === 0,
+    badGap.map(r => r.title + ' gap=' + Math.round(r.gap)).join(' / '));
+  /* 折行时「整块垂直居中」会让 dy ≈ 行高/2 ≈ 9.5px，这里卡 3px */
+  const badDy = dotRows.filter(r => Math.abs(r.dy) > 3);
+  ok('G3 绿点与末字同行居中（不是整块居中）', badDy.length === 0,
+    badDy.map(r => r.title + ' dy=' + Math.round(r.dy)).join(' / '));
+
   /* ---------- 场景 F：桌面档不受影响 ---------- */
-  console.log('\n[6/6] 场景 F：桌面档不受影响');
+  console.log('\n[7/7] 场景 F：桌面档不受影响');
   await page.setViewport({ width: 1440, height: 900, isMobile: false, hasTouch: false });
   await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
   await sleep(500);
