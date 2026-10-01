@@ -135,7 +135,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const g = await geom();
 
   /* ---------- 场景 A：抽屉边缘滑动 ---------- */
-  console.log('\n[1/6] 场景 A：抽屉边缘滑动');
+  console.log('\n[1/7] 场景 A：抽屉边缘滑动');
   await reset();
   await swipe(10, 400, 240, 400);
   await sleep(320);
@@ -161,7 +161,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   ok('A5 拉不到一半 → 弹回关闭', !s.navOpen, 'navOpen=' + s.navOpen);
 
   /* ---------- 场景 B：卡片长按 ---------- */
-  console.log('\n[2/6] 场景 B：卡片长按');
+  console.log('\n[2/7] 场景 B：卡片长按');
   await reset();
   await tStart(g.card.x, g.card.y);
   await sleep(160);
@@ -184,7 +184,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   ok('B5 短按（120ms）不误触发长按', !s.status, 'statusOverlay=' + s.status);
 
   /* ---------- 场景 C：短按两条老路径未被长按改变 ---------- */
-  console.log('\n[3/6] 场景 C：短按语义回归');
+  console.log('\n[3/7] 场景 C：短按语义回归');
   await reset();
   await tap(g.cover.x, g.cover.y);
   s = await state();
@@ -196,7 +196,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await reset();
 
   /* ---------- 场景 D：弹层下滑关闭 ---------- */
-  console.log('\n[4/6] 场景 D：弹层下滑关闭');
+  console.log('\n[4/7] 场景 D：弹层下滑关闭');
   const panelTop = sel => page.evaluate(q => Math.round(document.querySelector(q).getBoundingClientRect().top), sel);
   await tap(g.cover.x, g.cover.y);
   await sleep(150);
@@ -250,7 +250,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await reset();
 
   /* ---------- 场景 E：跟手（拖动过程中实时跟随，不是松手才动） ---------- */
-  console.log('\n[5/6] 场景 E：跟手');
+  console.log('\n[5/7] 场景 E：跟手');
   await reset();
   await tStart(10, 400);
   await tMove(60, 400); await sleep(40);
