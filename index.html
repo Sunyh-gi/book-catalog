@@ -120,12 +120,16 @@
   .cover img { max-width: 100%; max-height: 100%; display: block; }
   .cover-ph { font-size: 14px; color: var(--label); align-self: center; }
   .info { margin-top: 10px; cursor: pointer; }
-  /* 书名 + 已购绿点同行：点跟在书名右侧。书名可收缩（min-width:0），过长时点不会被挤出卡片 */
-  .c-head { display: flex; align-items: center; gap: 6px; }
-  .c-title { min-width: 0; font-size: 14px; line-height: 21px; font-weight: 500; color: var(--ink);
+  /* 书名 + 已购绿点：点写在 <h3> 里、随文字流走，永远紧跟最后一个字（2026-10-01 修）
+     ⚠ 别改回 flex：原先 .c-head 是 flex、.c-title 是 flex item —— 书名一旦折行，
+     item 宽度就撑满整行，点被顶到卡片最右边、还相对整个多行块垂直居中
+     （用户 2026-10-01 手机截图：两行的「地道风物012·火锅」点跑到最右侧）。
+     ⚠ 也别漏 vertical-align：点默认贴基线，挨着中文方块字会明显偏低 */
+  .c-title { font-size: 14px; line-height: 21px; font-weight: 500; color: var(--ink);
     overflow: hidden; text-overflow: ellipsis; }
   /* 已购标记：跟着书名的绿点（2026-10-01 从封面左上角移来，灰 → 绿） */
-  .dot-owned { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 3px; background: var(--owned); }
+  .dot-owned { display: inline-block; width: 6px; height: 6px; margin-left: 6px;
+    vertical-align: 0.2em; border-radius: 3px; background: var(--owned); }
   .c-author { margin-top: 5px; font-size: 12px; line-height: 17px; color: var(--assist);
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .info:hover .c-title { color: #2C2C2C; }
@@ -957,8 +961,8 @@
       return '<article class="card" data-id="' + esc(b.id) + '">' +
         '<div class="cover">' + cover + '</div>' +
         '<div class="info" data-id="' + esc(b.id) + '" title="点击修改标记">' +
-        '<div class="c-head"><h3 class="c-title">' + esc(b.title) + '</h3>' +
-        (st === "owned" ? '<span class="dot-owned" title="已购"></span>' : '') + '</div>' +
+        '<h3 class="c-title">' + esc(b.title) +
+        (st === "owned" ? '<span class="dot-owned" title="已购"></span>' : '') + '</h3>' +
         '<p class="c-author">' + esc(b.author) + '</p>' +
         '</div></article>';
     }
