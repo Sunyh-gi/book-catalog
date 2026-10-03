@@ -1414,6 +1414,25 @@
       "addedAt": "2026-09-30",
       "doubanUrl": "https://book.douban.com/subject/25935941/",
       "cover": ""
+    },
+    {
+      "id": "b-1791012141727",
+      "title": "往事与随想",
+      "author": "[俄] 赫尔岑",
+      "translator": "项星耀",
+      "subtitle": null,
+      "publisher": "四川人民出版社",
+      "year": 2018,
+      "pubDate": "2018-09",
+      "pages": 1896,
+      "binding": "精装",
+      "isbn": "9787220105142",
+      "genre": "文学",
+      "series": "后浪丨外国文学",
+      "status": "pending",
+      "addedAt": "2026-10-03",
+      "doubanUrl": "https://book.douban.com/subject/27191009/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1537,7 +1556,8 @@
     "b-1790784148588": "covers/cloud/b-1790784148588.jpg",
     "b-1790793788375": "covers/cloud/b-1790793788375.jpg",
     "b-1790794746737": "covers/cloud/b-1790794746737.jpg",
-    "b-1790795205361": "covers/cloud/b-1790795205361.jpg"
+    "b-1790795205361": "covers/cloud/b-1790795205361.jpg",
+    "b-1791012141727": "covers/cloud/b-1791012141727.jpg"
   },
-  "savedAt": "2026-09-30T19:10:19.161Z"
+  "savedAt": "2026-10-03T07:22:27.200Z"
 }
