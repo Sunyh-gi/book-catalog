@@ -1433,6 +1433,25 @@
       "addedAt": "2026-10-03",
       "doubanUrl": "https://book.douban.com/subject/27191009/",
       "cover": ""
+    },
+    {
+      "id": "b-1791031382869",
+      "title": "峡谷相逢",
+      "author": "李栓科",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "中信出版集团",
+      "year": 2025,
+      "pubDate": "2025-01",
+      "pages": 200,
+      "binding": "精装",
+      "isbn": "9787521764017",
+      "genre": "地理",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-10-03",
+      "doubanUrl": "https://book.douban.com/subject/37197986/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1557,7 +1576,8 @@
     "b-1790793788375": "covers/cloud/b-1790793788375.jpg",
     "b-1790794746737": "covers/cloud/b-1790794746737.jpg",
     "b-1790795205361": "covers/cloud/b-1790795205361.jpg",
-    "b-1791012141727": "covers/cloud/b-1791012141727.jpg"
+    "b-1791012141727": "covers/cloud/b-1791012141727.jpg",
+    "b-1791031382869": "covers/cloud/b-1791031382869.jpg"
   },
-  "savedAt": "2026-10-03T07:22:27.200Z"
+  "savedAt": "2026-10-03T12:43:08.274Z"
 }
