@@ -1471,6 +1471,25 @@
       "addedAt": "2026-10-05",
       "doubanUrl": "https://book.douban.com/subject/27101663/",
       "cover": ""
+    },
+    {
+      "id": "b-1791190751586",
+      "title": "转型中的地方政府",
+      "author": "周黎安",
+      "translator": "",
+      "subtitle": "官员激励与治理（第二版）",
+      "publisher": "格致出版社 / 上海三联书店 / 上海人民出版社",
+      "year": 2017,
+      "pubDate": "2017-08",
+      "pages": 442,
+      "binding": "平装",
+      "isbn": "9787543227651",
+      "genre": "政治",
+      "series": "当代经济学系列丛书",
+      "status": "pending",
+      "addedAt": "2026-10-05",
+      "doubanUrl": "https://book.douban.com/subject/27120243/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1601,7 +1620,8 @@
     "b-1790795205361": "covers/cloud/b-1790795205361.jpg",
     "b-1791012141727": "covers/cloud/b-1791012141727.jpg",
     "b-1791032612573": "covers/cloud/b-1791032612573.jpg",
-    "b-1791169262074": "covers/cloud/b-1791169262074.jpg"
+    "b-1791169262074": "covers/cloud/b-1791169262074.jpg",
+    "b-1791190751586": "covers/cloud/b-1791190751586.jpg"
   },
-  "savedAt": "2026-10-05T03:07:35.015Z"
+  "savedAt": "2026-10-05T08:59:18.401Z"
 }
