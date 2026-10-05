@@ -1490,6 +1490,25 @@
       "addedAt": "2026-10-05",
       "doubanUrl": "https://book.douban.com/subject/27120243/",
       "cover": ""
+    },
+    {
+      "id": "b-1791203542592",
+      "title": "风险投资交易 (原书第4版)",
+      "author": "[美] 布拉德·菲尔德",
+      "translator": "桂曙光",
+      "subtitle": "创业融资及条款清单大揭秘",
+      "publisher": "机械工业出版社",
+      "year": 2020,
+      "pubDate": "2020-07",
+      "pages": 316,
+      "binding": "平装",
+      "isbn": "9787111657941",
+      "genre": "投资",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-10-05",
+      "doubanUrl": "https://book.douban.com/subject/35172687/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1621,7 +1640,8 @@
     "b-1791012141727": "covers/cloud/b-1791012141727.jpg",
     "b-1791032612573": "covers/cloud/b-1791032612573.jpg",
     "b-1791169262074": "covers/cloud/b-1791169262074.jpg",
-    "b-1791190751586": "covers/cloud/b-1791190751586.jpg"
+    "b-1791190751586": "covers/cloud/b-1791190751586.jpg",
+    "b-1791203542592": "covers/cloud/b-1791203542592.jpg"
   },
-  "savedAt": "2026-10-05T08:59:18.401Z"
+  "savedAt": "2026-10-05T12:32:29.073Z"
 }
