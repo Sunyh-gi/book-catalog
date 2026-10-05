@@ -1452,6 +1452,25 @@
       "addedAt": "2026-10-03",
       "doubanUrl": "https://book.douban.com/subject/37197986/",
       "cover": ""
+    },
+    {
+      "id": "b-1791169262074",
+      "title": "权力与特权",
+      "author": "[美] 格尔哈特·伦斯基",
+      "translator": "关信平 / 陈宗显 / 谢晋宇",
+      "subtitle": "社会分层的理论",
+      "publisher": "社会科学文献出版社",
+      "year": 2018,
+      "pubDate": "2018-01",
+      "pages": 656,
+      "binding": "精装",
+      "isbn": "9787520112178",
+      "genre": "社科",
+      "series": "甲骨文丛书",
+      "status": "pending",
+      "addedAt": "2026-10-05",
+      "doubanUrl": "https://book.douban.com/subject/27101663/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1577,7 +1596,9 @@
     "b-1790793788375": "covers/cloud/b-1790793788375.jpg",
     "b-1790794746737": "covers/cloud/b-1790794746737.jpg",
     "b-1790795205361": "covers/cloud/b-1790795205361.jpg",
-    "b-1791012141727": "covers/cloud/b-1791012141727.jpg"
+    "b-1791012141727": "covers/cloud/b-1791012141727.jpg",
+    "b-1791032612573": "covers/cloud/b-1791032612573.jpg",
+    "b-1791169262074": "covers/cloud/b-1791169262074.jpg"
   },
-  "savedAt": "2026-10-03T13:03:13.350Z"
+  "savedAt": "2026-10-05T03:01:07.388Z"
 }
