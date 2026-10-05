@@ -1509,6 +1509,25 @@
       "addedAt": "2026-10-05",
       "doubanUrl": "https://book.douban.com/subject/35172687/",
       "cover": ""
+    },
+    {
+      "id": "b-1791204055761",
+      "title": "估值建模(第三版)",
+      "author": "诚讯金融培训",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "中国金融出版社",
+      "year": 2023,
+      "pubDate": "2023-06",
+      "pages": 410,
+      "binding": "平装",
+      "isbn": "9787522020020",
+      "genre": "投资",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-10-05",
+      "doubanUrl": "https://book.douban.com/subject/36503752/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1641,7 +1660,8 @@
     "b-1791032612573": "covers/cloud/b-1791032612573.jpg",
     "b-1791169262074": "covers/cloud/b-1791169262074.jpg",
     "b-1791190751586": "covers/cloud/b-1791190751586.jpg",
-    "b-1791203542592": "covers/cloud/b-1791203542592.jpg"
+    "b-1791203542592": "covers/cloud/b-1791203542592.jpg",
+    "b-1791204055761": "covers/cloud/b-1791204055761.jpg"
   },
-  "savedAt": "2026-10-05T12:32:29.073Z"
+  "savedAt": "2026-10-05T12:41:03.429Z"
 }
