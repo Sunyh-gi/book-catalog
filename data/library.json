@@ -1528,6 +1528,25 @@
       "addedAt": "2026-10-05",
       "doubanUrl": "https://book.douban.com/subject/36503752/",
       "cover": ""
+    },
+    {
+      "id": "b-1791389269804",
+      "title": "回归故里",
+      "author": "[法] 迪迪埃·埃里蓬",
+      "translator": "王献",
+      "subtitle": null,
+      "publisher": "上海文化出版社",
+      "year": 2020,
+      "pubDate": "2020-07",
+      "pages": 184,
+      "binding": "精装",
+      "isbn": "9787553518510",
+      "genre": "社科",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-10-07",
+      "doubanUrl": "https://book.douban.com/subject/34942789/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1539,13 +1558,13 @@
       "历史",
       "地理",
       "旅行",
-      "文化",
-      "卫生",
+      "百科",
+      "健康",
       "文学",
       "家装",
       "园林",
-      "百科",
-      "健康"
+      "文化",
+      "卫生"
     ],
     "map": {
       "b-1790361106462": "历史",
@@ -1661,7 +1680,8 @@
     "b-1791169262074": "covers/cloud/b-1791169262074.jpg",
     "b-1791190751586": "covers/cloud/b-1791190751586.jpg",
     "b-1791203542592": "covers/cloud/b-1791203542592.jpg",
-    "b-1791204055761": "covers/cloud/b-1791204055761.jpg"
+    "b-1791204055761": "covers/cloud/b-1791204055761.jpg",
+    "b-1791389269804": "covers/cloud/b-1791389269804.jpg"
   },
-  "savedAt": "2026-10-05T12:41:03.429Z"
+  "savedAt": "2026-10-07T16:07:55.380Z"
 }
