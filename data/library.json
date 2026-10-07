@@ -1547,6 +1547,25 @@
       "addedAt": "2026-10-07",
       "doubanUrl": "https://book.douban.com/subject/34942789/",
       "cover": ""
+    },
+    {
+      "id": "b-1791389692038",
+      "title": "国家精英",
+      "author": "[法] 皮埃尔·布迪厄",
+      "translator": "杨亚平",
+      "subtitle": "名牌大学与群体精神",
+      "publisher": "商务印书馆",
+      "year": 2018,
+      "pubDate": "2018-07",
+      "pages": 716,
+      "binding": "平装",
+      "isbn": "9787100158688",
+      "genre": "社科",
+      "series": "当代法国思想文化译丛",
+      "status": "pending",
+      "addedAt": "2026-10-07",
+      "doubanUrl": "https://book.douban.com/subject/30141437/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1681,7 +1700,8 @@
     "b-1791190751586": "covers/cloud/b-1791190751586.jpg",
     "b-1791203542592": "covers/cloud/b-1791203542592.jpg",
     "b-1791204055761": "covers/cloud/b-1791204055761.jpg",
-    "b-1791389269804": "covers/cloud/b-1791389269804.jpg"
+    "b-1791389269804": "covers/cloud/b-1791389269804.jpg",
+    "b-1791389692038": "covers/cloud/b-1791389692038.jpg"
   },
-  "savedAt": "2026-10-07T16:07:55.380Z"
+  "savedAt": "2026-10-07T16:14:57.675Z"
 }
