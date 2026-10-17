@@ -1624,6 +1624,25 @@
       "addedAt": "2026-10-17",
       "doubanUrl": "https://book.douban.com/subject/5260232/",
       "cover": ""
+    },
+    {
+      "id": "b-1792254195868",
+      "title": "普罗旺斯的一年",
+      "author": "[英] 彼得•梅尔",
+      "translator": "王春 / 王斯秧",
+      "subtitle": null,
+      "publisher": "南海出版公司",
+      "year": 2011,
+      "pubDate": "2011-05",
+      "pages": 271,
+      "binding": "精装",
+      "isbn": "9787544253024",
+      "genre": "文学",
+      "series": "新经典文化·彼得·梅尔作品",
+      "status": "pending",
+      "addedAt": "2026-10-17",
+      "doubanUrl": "https://book.douban.com/subject/6131589/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1762,7 +1781,8 @@
     "b-1791204055761": "covers/cloud/b-1791204055761.jpg",
     "b-1792214268251": "covers/cloud/b-1792214268251.jpg",
     "b-1792214378919": "covers/cloud/b-1792214378919.jpg",
-    "b-1792252507088": "covers/cloud/b-1792252507088.jpg"
+    "b-1792252507088": "covers/cloud/b-1792252507088.jpg",
+    "b-1792254195868": "covers/cloud/b-1792254195868.jpg"
   },
-  "savedAt": "2026-10-17T15:55:13.389Z"
+  "savedAt": "2026-10-17T16:23:22.429Z"
 }
