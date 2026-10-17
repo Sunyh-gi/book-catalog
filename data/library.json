@@ -63,7 +63,8 @@
     "b-1790689775123": "owned",
     "b-1790781549463": "owned",
     "b-1790781688578": "owned",
-    "b-1790781964617": "owned"
+    "b-1790781964617": "owned",
+    "b-1792252507088": "owned"
   },
   "added": [
     {
@@ -1604,6 +1605,25 @@
       "addedAt": "2026-10-17",
       "doubanUrl": "https://book.douban.com/subject/37110396/",
       "cover": ""
+    },
+    {
+      "id": "b-1792252507088",
+      "title": "托斯卡纳艳阳下",
+      "author": "[美] 弗朗西斯·梅斯",
+      "translator": "邱艺鸿",
+      "subtitle": null,
+      "publisher": "南海出版公司",
+      "year": 2010,
+      "pubDate": "2010-09",
+      "pages": 304,
+      "binding": "平装",
+      "isbn": "9787544248587",
+      "genre": "文学",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-10-17",
+      "doubanUrl": "https://book.douban.com/subject/5260232/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1741,7 +1761,8 @@
     "b-1791203542592": "covers/cloud/b-1791203542592.jpg",
     "b-1791204055761": "covers/cloud/b-1791204055761.jpg",
     "b-1792214268251": "covers/cloud/b-1792214268251.jpg",
-    "b-1792214378919": "covers/cloud/b-1792214378919.jpg"
+    "b-1792214378919": "covers/cloud/b-1792214378919.jpg",
+    "b-1792252507088": "covers/cloud/b-1792252507088.jpg"
   },
-  "savedAt": "2026-10-17T09:12:50.212Z"
+  "savedAt": "2026-10-17T15:55:13.389Z"
 }
