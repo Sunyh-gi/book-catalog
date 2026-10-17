@@ -1566,6 +1566,44 @@
       "addedAt": "2026-10-07",
       "doubanUrl": "https://book.douban.com/subject/30141437/",
       "cover": ""
+    },
+    {
+      "id": "b-1792214268251",
+      "title": "厨房科学超图解",
+      "author": "[法] 亚瑟·勒凯斯纳",
+      "translator": "孙静",
+      "subtitle": "700个料理冷知识，解密烹饪的真相",
+      "publisher": "华中科技大学出版社",
+      "year": 2021,
+      "pubDate": "2021-10",
+      "pages": 240,
+      "binding": "精装",
+      "isbn": "9787568051798",
+      "genre": "百科",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-10-17",
+      "doubanUrl": "https://book.douban.com/subject/35672000/",
+      "cover": ""
+    },
+    {
+      "id": "b-1792214378919",
+      "title": "我的世界是一座花园",
+      "author": "[英] 蒙提·唐",
+      "translator": "光合作用",
+      "subtitle": "蒙提·唐的四季自然笔记",
+      "publisher": "北京科学技术出版社",
+      "year": 2025,
+      "pubDate": "2025-03",
+      "pages": 544,
+      "binding": "精装",
+      "isbn": "9787571443108",
+      "genre": "园林",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-10-17",
+      "doubanUrl": "https://book.douban.com/subject/37110396/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1577,13 +1615,13 @@
       "历史",
       "地理",
       "旅行",
-      "百科",
-      "健康",
+      "文化",
+      "卫生",
       "文学",
       "家装",
       "园林",
-      "文化",
-      "卫生"
+      "百科",
+      "健康"
     ],
     "map": {
       "b-1790361106462": "历史",
@@ -1623,6 +1661,8 @@
     "b-1791116970742"
   ],
   "cover": {
+    "b-1791389269804": "covers/cloud/b-1791389269804.jpg",
+    "b-1791389692038": "covers/cloud/b-1791389692038.jpg",
     "b-1790344850085": "covers/cloud/b-1790344850085.jpg",
     "b-1790352597826": "covers/cloud/b-1790352597826.jpg",
     "b-1790353554543": "covers/cloud/b-1790353554543.jpg",
@@ -1700,8 +1740,8 @@
     "b-1791190751586": "covers/cloud/b-1791190751586.jpg",
     "b-1791203542592": "covers/cloud/b-1791203542592.jpg",
     "b-1791204055761": "covers/cloud/b-1791204055761.jpg",
-    "b-1791389269804": "covers/cloud/b-1791389269804.jpg",
-    "b-1791389692038": "covers/cloud/b-1791389692038.jpg"
+    "b-1792214268251": "covers/cloud/b-1792214268251.jpg",
+    "b-1792214378919": "covers/cloud/b-1792214378919.jpg"
   },
-  "savedAt": "2026-10-07T16:15:08.948Z"
+  "savedAt": "2026-10-17T09:12:50.212Z"
 }
