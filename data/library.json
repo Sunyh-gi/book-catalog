@@ -64,7 +64,8 @@
     "b-1790781549463": "owned",
     "b-1790781688578": "owned",
     "b-1790781964617": "owned",
-    "b-1792252507088": "owned"
+    "b-1792252507088": "owned",
+    "b-1792254455095": "owned"
   },
   "added": [
     {
@@ -1643,6 +1644,25 @@
       "addedAt": "2026-10-17",
       "doubanUrl": "https://book.douban.com/subject/6131589/",
       "cover": ""
+    },
+    {
+      "id": "b-1792254455095",
+      "title": "当代中国政府与政治",
+      "author": "景跃进",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "中国人民大学出版社",
+      "year": 2016,
+      "pubDate": "2016-01",
+      "pages": 279,
+      "binding": "平装",
+      "isbn": "9787300220055",
+      "genre": "政治",
+      "series": "新编21世纪公共管理系列教材",
+      "status": "pending",
+      "addedAt": "2026-10-17",
+      "doubanUrl": "https://book.douban.com/subject/26665157/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1782,7 +1802,8 @@
     "b-1792214268251": "covers/cloud/b-1792214268251.jpg",
     "b-1792214378919": "covers/cloud/b-1792214378919.jpg",
     "b-1792252507088": "covers/cloud/b-1792252507088.jpg",
-    "b-1792254195868": "covers/cloud/b-1792254195868.jpg"
+    "b-1792254195868": "covers/cloud/b-1792254195868.jpg",
+    "b-1792254455095": "covers/cloud/b-1792254455095.jpg"
   },
-  "savedAt": "2026-10-17T16:23:22.429Z"
+  "savedAt": "2026-10-17T16:27:45.708Z"
 }
