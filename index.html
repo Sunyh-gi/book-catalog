@@ -1445,6 +1445,45 @@
       scheduleAutoPush();
     }
     function markClean() { try { localStorage.removeItem(DIRTY_KEY); } catch (e) {} }
+
+    /* ---------- 页脚「数据更新」----------
+       旧版读 data/books.js 的静态 BOOK_META.updatedAt：09-25 清库时手改过一次，
+       之后页面录入的书全走 localStorage 覆盖层与云端快照，永远碰不到这个串，
+       角标就此停格（2026-10-18 用户报障）。
+       现按真实时间显示，三级回退：
+       ① LS_SAVED：最近一次云端同步成功的时间（noteCloudSaved 在推送成功 /
+          拉取硬覆盖两处落盘，跨刷新有效）
+       ② 全库最近一本的 addedAt（覆盖层 store.added + 底册 BOOKS，日期串可直接比大小）
+       ③ 全空（全新空库）显示 —。
+       BOOK_META.updatedAt 从此不再上页脚，语义保留在 books.js（底册维护时间）。 */
+    var LS_SAVED = "booklib.saved";
+    function fmtStamp(iso) {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return "";
+      function p2(n) { return (n < 10 ? "0" : "") + n; }
+      return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) +
+        " " + p2(d.getHours()) + ":" + p2(d.getMinutes());
+    }
+    function updateFootUpdated() {
+      var t = "";
+      try { t = localStorage.getItem(LS_SAVED) || ""; } catch (e) {}
+      if (!t) {
+        var latest = "";
+        (window.BOOKS || []).concat(store.added || []).forEach(function (b) {
+          var a = String((b && b.addedAt) || "");
+          if (a > latest) latest = a;
+        });
+        t = latest;
+      }
+      var el = document.getElementById("footUpdated");
+      if (el) el.textContent = "数据更新 " + (t ? (t.length <= 10 ? t : fmtStamp(t)) : "—");
+    }
+    /* 同步成功（推送落库 / 拉取硬覆盖）后记一笔，并立刻刷新页脚 */
+    function noteCloudSaved(iso) {
+      if (!iso) return;
+      try { localStorage.setItem(LS_SAVED, iso); } catch (e) {}
+      updateFootUpdated();
+    }
     /* 防抖：连着改几本只推一次 */
     function scheduleAutoPush() {
       if (cloudWriting || !cloudCfg()) return;
@@ -1649,6 +1688,7 @@
         return cloudCleanOrphans(cfg, payload, failed);
       }).then(function (n) {
         removed = n || 0;
+        noteCloudSaved(payload.savedAt);
         setCloudNote("✅ 已上传云端（" + (payload.added ? payload.added.length : 0) + " 本自定义图书）" +
           (removed ? "，并清理 " + removed + " 个失效封面" : "") +
           (failed.length ? "；⚠ 有 " + failed.length + " 张封面没传上，再点一次「立即同步」可补传" : "") +
@@ -1671,6 +1711,7 @@
       /* 硬覆盖同属「同步」：新设备自动加载云端书库后不该被标脏、立刻推回一份 */
       cloudWriting = true;
       try { pruneOverlay(); saveStore(); } finally { cloudWriting = false; }
+      noteCloudSaved(p.savedAt);
       renderAll();
       if (!silent) closeCloud();
     }
@@ -2203,7 +2244,7 @@
 
     /* ---------- 启动 ---------- */
     var meta = window.BOOK_META || {};
-    document.getElementById("footUpdated").textContent = "数据更新 " + (meta.updatedAt || "—");
+    updateFootUpdated();
     document.getElementById("footVersion").textContent = meta.version || "v1.0";
     /* 启动就收敛一次覆盖层：否则旧版留下的残留（删书没清 cover/status/g.map）
        要等到下次云同步才清掉，中间一直挂在 localStorage 里。只在真有残留时写回。
