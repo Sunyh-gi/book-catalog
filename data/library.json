@@ -1663,6 +1663,44 @@
       "addedAt": "2026-10-17",
       "doubanUrl": "https://book.douban.com/subject/26665157/",
       "cover": ""
+    },
+    {
+      "id": "b-1792295019528",
+      "title": "气象学与生活",
+      "author": "[美] 弗雷德里克·K. 鲁特更斯",
+      "translator": "陈星 / 黄樱 / 等",
+      "subtitle": "：原书第12版",
+      "publisher": "电子工业出版社",
+      "year": 2016,
+      "pubDate": "2016-10",
+      "pages": 382,
+      "binding": "平装",
+      "isbn": "9787121299209",
+      "genre": "地理",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-10-18",
+      "doubanUrl": "https://book.douban.com/subject/26942567/",
+      "cover": ""
+    },
+    {
+      "id": "b-1792295132473",
+      "title": "薄世宁医学通识讲义",
+      "author": "薄世宁",
+      "translator": "",
+      "subtitle": "一生需要上一次医学院",
+      "publisher": "中信出版集团",
+      "year": 2019,
+      "pubDate": "2019-10",
+      "pages": 364,
+      "binding": "精装",
+      "isbn": "9787521709605",
+      "genre": "健康",
+      "series": "得到讲义系列",
+      "status": "pending",
+      "addedAt": "2026-10-18",
+      "doubanUrl": "https://book.douban.com/subject/34842793/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1803,7 +1841,8 @@
     "b-1792214378919": "covers/cloud/b-1792214378919.jpg",
     "b-1792252507088": "covers/cloud/b-1792252507088.jpg",
     "b-1792254195868": "covers/cloud/b-1792254195868.jpg",
-    "b-1792254455095": "covers/cloud/b-1792254455095.jpg"
+    "b-1792254455095": "covers/cloud/b-1792254455095.jpg",
+    "b-1792295019528": "covers/cloud/b-1792295019528.jpg"
   },
-  "savedAt": "2026-10-17T16:27:45.708Z"
+  "savedAt": "2026-10-18T03:43:45.076Z"
 }
