@@ -813,6 +813,10 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
     (await page3.evaluate(() => localStorage.getItem('booklib.dirty'))) === null);
   ok('T6 同步状态回到「已同步」',
     (await page3.evaluate(() => document.getElementById('cloudState').textContent)) === '已同步');
+  ok('T9 页脚「数据更新」随同步时间刷新（不再读底册静态时间）',
+    /^数据更新 \d{4}-\d{2}-\d{2} \d{2}:\d\d$/.test(
+      await page3.evaluate(() => document.getElementById('footUpdated').textContent)),
+    await page3.evaluate(() => document.getElementById('footUpdated').textContent));
   const tPutsBefore = ghLog.filter(x => x.method === 'PUT').length;
   await sleep(6000);
   const tPutsAfter = ghLog.filter(x => x.method === 'PUT').length;
