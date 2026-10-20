@@ -1701,6 +1701,25 @@
       "addedAt": "2026-10-18",
       "doubanUrl": "https://book.douban.com/subject/34842793/",
       "cover": ""
+    },
+    {
+      "id": "b-1792510557221",
+      "title": "看见",
+      "author": "柴静",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "",
+      "year": 2013,
+      "pubDate": null,
+      "pages": null,
+      "binding": null,
+      "isbn": "9787549529322",
+      "genre": "社科",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-10-20",
+      "doubanUrl": "",
+      "cover": ""
     }
   ],
   "g": {
@@ -1842,7 +1861,8 @@
     "b-1792252507088": "covers/cloud/b-1792252507088.jpg",
     "b-1792254195868": "covers/cloud/b-1792254195868.jpg",
     "b-1792254455095": "covers/cloud/b-1792254455095.jpg",
-    "b-1792295019528": "covers/cloud/b-1792295019528.jpg"
+    "b-1792295019528": "covers/cloud/b-1792295019528.jpg",
+    "b-1792295132473": "covers/cloud/b-1792295132473.jpg"
   },
-  "savedAt": "2026-10-18T03:43:45.076Z"
+  "savedAt": "2026-10-20T15:36:02.891Z"
 }
