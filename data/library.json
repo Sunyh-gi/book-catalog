@@ -1708,11 +1708,11 @@
       "author": "柴静",
       "translator": "",
       "subtitle": null,
-      "publisher": "",
+      "publisher": "广西师范大学出版社",
       "year": 2013,
-      "pubDate": null,
-      "pages": null,
-      "binding": null,
+      "pubDate": "2013-01",
+      "pages": 405,
+      "binding": "平装",
       "isbn": "9787549529322",
       "genre": "社科",
       "series": "",
@@ -1864,5 +1864,5 @@
     "b-1792295019528": "covers/cloud/b-1792295019528.jpg",
     "b-1792295132473": "covers/cloud/b-1792295132473.jpg"
   },
-  "savedAt": "2026-10-20T15:36:02.891Z"
+  "savedAt": "2026-10-20T16:30:21.913Z"
 }
