@@ -1593,10 +1593,32 @@
       }).catch(function () { return 0; });
     }
     /* 云端快照与本机按书合并（多设备安全：并集 + 本机优先 + 删除传播） */
+    /* 字段级互补：同 id 书本机版本整体保留（状态、题材、封面等用户数据以本机为准），
+       但「本机为空、云端有值」的字段用云端补上。动机（2026-10-20 实战）：
+       手动录入的书publisher/pages/binding等字段为空，脚本/另一台设备补全后推上云端，
+       本机合并时「同 id 本机优先」会把空字段原样推回去——云端补全永远白补。
+       条目其余字段（title 等）本机非空优先、空则用云端；两个字段都空的照旧空。 */
+    var FILLABLE = ["translator", "subtitle", "publisher", "pubDate", "pages", "binding",
+      "isbn", "series", "doubanUrl", "cover"];
+    function fillEmptyFields(local, remote) {
+      if (!remote) return false;
+      var touched = false;
+      FILLABLE.forEach(function (k) {
+        var lv = local[k], rv = remote[k];
+        if ((lv === null || lv === undefined || lv === "") && rv !== null && rv !== undefined && rv !== "") {
+          local[k] = rv;
+          touched = true;
+        }
+      });
+      return touched;
+    }
     function mergeStoreWithCloud(cloud) {
       var byId = {};
       (cloud.added || []).forEach(function (b) { byId[b.id] = b; });
-      (store.added || []).forEach(function (b) { byId[b.id] = b; });   // 同 id 本机版本优先
+      (store.added || []).forEach(function (b) {
+        if (byId[b.id]) fillEmptyFields(b, byId[b.id]);   // 同 id：先补本机空字段
+        byId[b.id] = b;                                   // 仍以本机对象为准（含补全结果）
+      });
       var del = {};
       (cloud.deleted || []).forEach(function (id) { del[id] = 1; });
       (store.deleted || []).forEach(function (id) { del[id] = 1; });   // 删除记录双向传播
@@ -1735,7 +1757,18 @@
     /* 新设备 / 新浏览器首次打开：本机无数据时自动加载云端书库。
        hasLocalData 里 deleted 也算「本机有数据」：否则本机把书全删光后，下次打开又会自动拉回云端旧书 */
     function cloudAutoLoad() {
-      if (hasLocalData()) return;
+      if (hasLocalData()) {
+        /* 本机有数据不再直接返回（2026-10-20 实战）：拉云端做一次「字段级互补」合并，
+           「本机空、云端有」的字段（如脚本补全的出版社/页数）刷新即修复，且云端仍有的
+           删除墓碑也照常传播。合并由 cloudWriting 挡住 markDirty，不会引发「推回」循环；
+           若合并后确有字段被补，下次自动同步会把补全结果随快照推上去（幂等，无副作用）。
+           ⚠ 仅在有口令时做：没口令会退回读 Pages（1-3 分钟 CDN 延迟 + 冒烟封闭性被
+           真实线上数据打破——page2 无口令场景会混进 github.io 的真书库）。 */
+        if (cloudCfg()) fetchCloudSnapshot(cloudCfg()).then(function (p) {
+          if (p) mergeStoreWithCloud(p);
+        });
+        return;
+      }
       fetchCloudSnapshot(cloudCfg())
         .then(function (p) {
           if (!p) return;
