@@ -1762,6 +1762,25 @@
       "addedAt": "2026-10-22",
       "doubanUrl": "https://book.douban.com/subject/26253698/",
       "cover": ""
+    },
+    {
+      "id": "b-1792659115887",
+      "title": "从阿尔泰山到横断山",
+      "author": "李忠东",
+      "translator": "",
+      "subtitle": "地质工作者手记",
+      "publisher": "广西师范大学出版社",
+      "year": 2025,
+      "pubDate": "2025-05",
+      "pages": 524,
+      "binding": "平装",
+      "isbn": "9787559879622",
+      "genre": "地理",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-10-22",
+      "doubanUrl": "https://book.douban.com/subject/37346103/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1908,7 +1927,8 @@
     "b-1792510557221": "covers/cloud/b-1792510557221.jpg",
     "b-1792644905484": "covers/cloud/b-1792644905484.jpg",
     "b-1792645010500": "covers/cloud/b-1792645010500.jpg",
-    "b-1792645090526": "covers/cloud/b-1792645090526.jpg"
+    "b-1792645090526": "covers/cloud/b-1792645090526.jpg",
+    "b-1792659115887": "covers/cloud/b-1792659115887.jpg"
   },
-  "savedAt": "2026-10-22T04:58:46.822Z"
+  "savedAt": "2026-10-22T08:52:01.968Z"
 }
