@@ -1781,6 +1781,25 @@
       "addedAt": "2026-10-22",
       "doubanUrl": "https://book.douban.com/subject/37346103/",
       "cover": ""
+    },
+    {
+      "id": "b-1792660184459",
+      "title": "韦伯与社会科学的视野",
+      "author": "周雪光",
+      "translator": "",
+      "subtitle": "周雪光阅读笔记",
+      "publisher": "上海文艺出版社",
+      "year": 2026,
+      "pubDate": "2026-03",
+      "pages": 344,
+      "binding": "平装",
+      "isbn": "9787532194810",
+      "genre": "社科",
+      "series": "周雪光阅读笔记",
+      "status": "pending",
+      "addedAt": "2026-10-22",
+      "doubanUrl": "https://book.douban.com/subject/38202012/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1928,7 +1947,8 @@
     "b-1792644905484": "covers/cloud/b-1792644905484.jpg",
     "b-1792645010500": "covers/cloud/b-1792645010500.jpg",
     "b-1792645090526": "covers/cloud/b-1792645090526.jpg",
-    "b-1792659115887": "covers/cloud/b-1792659115887.jpg"
+    "b-1792659115887": "covers/cloud/b-1792659115887.jpg",
+    "b-1792660184459": "covers/cloud/b-1792660184459.jpg"
   },
-  "savedAt": "2026-10-22T08:52:01.968Z"
+  "savedAt": "2026-10-22T09:09:50.551Z"
 }
