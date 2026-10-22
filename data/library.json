@@ -1800,6 +1800,25 @@
       "addedAt": "2026-10-22",
       "doubanUrl": "https://book.douban.com/subject/38202012/",
       "cover": ""
+    },
+    {
+      "id": "b-1792660481837",
+      "title": "埃及、希腊与罗马",
+      "author": "[英] 查尔斯·弗里曼",
+      "translator": "李大维 / 刘亮",
+      "subtitle": "古代地中海文明",
+      "publisher": "民主与建设出版社",
+      "year": 2020,
+      "pubDate": "2020-09",
+      "pages": 952,
+      "binding": "精装",
+      "isbn": "9787513928960",
+      "genre": "历史",
+      "series": "汗青堂",
+      "status": "pending",
+      "addedAt": "2026-10-22",
+      "doubanUrl": "https://book.douban.com/subject/34970398/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1948,7 +1967,8 @@
     "b-1792645010500": "covers/cloud/b-1792645010500.jpg",
     "b-1792645090526": "covers/cloud/b-1792645090526.jpg",
     "b-1792659115887": "covers/cloud/b-1792659115887.jpg",
-    "b-1792660184459": "covers/cloud/b-1792660184459.jpg"
+    "b-1792660184459": "covers/cloud/b-1792660184459.jpg",
+    "b-1792660481837": "covers/cloud/b-1792660481837.jpg"
   },
-  "savedAt": "2026-10-22T09:09:50.551Z"
+  "savedAt": "2026-10-22T09:14:47.169Z"
 }
