@@ -1669,25 +1669,6 @@
       "cover": ""
     },
     {
-      "id": "b-1792295019528",
-      "title": "气象学与生活",
-      "author": "[美] 弗雷德里克·K. 鲁特更斯",
-      "translator": "陈星 / 黄樱 / 等",
-      "subtitle": "：原书第12版",
-      "publisher": "电子工业出版社",
-      "year": 2016,
-      "pubDate": "2016-10",
-      "pages": 382,
-      "binding": "平装",
-      "isbn": "9787121299209",
-      "genre": "地理",
-      "series": "",
-      "status": "pending",
-      "addedAt": "2026-10-18",
-      "doubanUrl": "https://book.douban.com/subject/26942567/",
-      "cover": ""
-    },
-    {
       "id": "b-1792295132473",
       "title": "薄世宁医学通识讲义",
       "author": "薄世宁",
@@ -1742,6 +1723,44 @@
       "status": "pending",
       "addedAt": "2026-10-22",
       "doubanUrl": "https://book.douban.com/subject/33446823/",
+      "cover": ""
+    },
+    {
+      "id": "b-1792645010500",
+      "title": "台北人",
+      "author": "白先勇",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "广西师范大学出版社",
+      "year": 2015,
+      "pubDate": "2015-01",
+      "pages": 291,
+      "binding": "精装",
+      "isbn": "9787549559886",
+      "genre": "文学",
+      "series": "理想国·白先勇作品",
+      "status": "pending",
+      "addedAt": "2026-10-22",
+      "doubanUrl": "https://book.douban.com/subject/26253699/",
+      "cover": ""
+    },
+    {
+      "id": "b-1792645090526",
+      "title": "纽约客",
+      "author": "白先勇",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "广西师范大学出版社",
+      "year": 2014,
+      "pubDate": "2014-12",
+      "pages": 232,
+      "binding": "精装",
+      "isbn": "9787549559879",
+      "genre": "文学",
+      "series": "理想国·白先勇作品",
+      "status": "pending",
+      "addedAt": "2026-10-22",
+      "doubanUrl": "https://book.douban.com/subject/26253698/",
       "cover": ""
     }
   ],
@@ -1885,10 +1904,11 @@
     "b-1792252507088": "covers/cloud/b-1792252507088.jpg",
     "b-1792254195868": "covers/cloud/b-1792254195868.jpg",
     "b-1792254455095": "covers/cloud/b-1792254455095.jpg",
-    "b-1792295019528": "covers/cloud/b-1792295019528.jpg",
     "b-1792295132473": "covers/cloud/b-1792295132473.jpg",
     "b-1792510557221": "covers/cloud/b-1792510557221.jpg",
-    "b-1792644905484": "covers/cloud/b-1792644905484.jpg"
+    "b-1792644905484": "covers/cloud/b-1792644905484.jpg",
+    "b-1792645010500": "covers/cloud/b-1792645010500.jpg",
+    "b-1792645090526": "covers/cloud/b-1792645090526.jpg"
   },
-  "savedAt": "2026-10-22T04:55:14.551Z"
+  "savedAt": "2026-10-22T04:58:46.822Z"
 }
