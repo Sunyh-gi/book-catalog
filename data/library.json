@@ -1819,6 +1819,25 @@
       "addedAt": "2026-10-22",
       "doubanUrl": "https://book.douban.com/subject/34970398/",
       "cover": ""
+    },
+    {
+      "id": "b-1793016610709",
+      "title": "义和团运动的起源",
+      "author": "[美] 周锡瑞",
+      "translator": "张俊义 / 王栋",
+      "subtitle": null,
+      "publisher": "江苏人民出版社",
+      "year": 2021,
+      "pubDate": "2021-11",
+      "pages": 490,
+      "binding": "精装",
+      "isbn": "9787214248305",
+      "genre": "历史",
+      "series": "海外中国研究丛书·精选版",
+      "status": "pending",
+      "addedAt": "2026-10-26",
+      "doubanUrl": "https://book.douban.com/subject/35245517/",
+      "cover": ""
     }
   ],
   "g": {
@@ -1890,7 +1909,6 @@
     "b-1790353985933": "covers/cloud/b-1790353985933.jpg",
     "b-1790355691962": "covers/cloud/b-1790355691962.jpg",
     "b-1790358662443": "covers/cloud/b-1790358662443.jpg",
-    "b-1790361106462": "covers/cloud/b-1790361106462.jpg",
     "b-1790361247928": "covers/cloud/b-1790361247928.jpg",
     "b-1790361760436": "covers/cloud/b-1790361760436.jpg",
     "b-1790361933380": "covers/cloud/b-1790361933380.jpg",
@@ -1943,9 +1961,6 @@
     "b-1790671466777": "covers/cloud/b-1790671466777.jpg",
     "b-1790689775123": "covers/cloud/b-1790689775123.jpg",
     "b-1790781549463": "covers/cloud/b-1790781549463.jpg",
-    "b-1790781688578": "covers/cloud/b-1790781688578.jpg",
-    "b-1790781964617": "covers/cloud/b-1790781964617.jpg",
-    "b-1790783344197": "covers/cloud/b-1790783344197.jpg",
     "b-1790784148588": "covers/cloud/b-1790784148588.jpg",
     "b-1790793788375": "covers/cloud/b-1790793788375.jpg",
     "b-1790794746737": "covers/cloud/b-1790794746737.jpg",
@@ -1968,7 +1983,8 @@
     "b-1792645090526": "covers/cloud/b-1792645090526.jpg",
     "b-1792659115887": "covers/cloud/b-1792659115887.jpg",
     "b-1792660184459": "covers/cloud/b-1792660184459.jpg",
-    "b-1792660481837": "covers/cloud/b-1792660481837.jpg"
+    "b-1792660481837": "covers/cloud/b-1792660481837.jpg",
+    "b-1793016610709": "covers/cloud/b-1793016610709.jpg"
   },
-  "savedAt": "2026-10-22T09:31:13.593Z"
+  "savedAt": "2026-10-26T12:11:06.338Z"
 }
