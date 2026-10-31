@@ -160,10 +160,16 @@
      必须排在 .selected 之后：两者同为 (0,2,1) 特异性，后者胜，选中已购时点才不会被刷回灰色。 */
   .status-opt[data-status="owned"] .dot { border-color: var(--owned); background: var(--owned); }
 
+  /* 四个可滚动弹层的滚动条口径与 .gridwrap/.nav 一致：彻底不渲染（用户口径：
+     「直接删掉，不要隐藏/显出那种」，滚动功能保留）。不处理时经典滚动条的方形
+     端头会填平面板右侧上下圆角，左侧没有 → 左右圆角看起来不一样（2026-10-31 用户报）。 */
+  .add-panel, .detail-panel, .genre-panel, .cloud-panel { scrollbar-width: none; -ms-overflow-style: none; }
+  .add-panel::-webkit-scrollbar, .detail-panel::-webkit-scrollbar,
+  .genre-panel::-webkit-scrollbar, .cloud-panel::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
   .add-panel { width: 800px; max-width: 100%; max-height: 84vh; overflow: auto;
     background: #fff; border-radius: 12px; padding: 28px;
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }
-  .add-head { display: flex; align-items: flex-start; justify-content: space-between; }
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }  .add-head { display: flex; align-items: flex-start; justify-content: space-between; }
   .add-head h2 { font-size: 18px; font-weight: 500; color: var(--ink); line-height: 26px; }
   .add-head p { margin-top: 6px; font-size: 12px; color: var(--assist); }
   .close-btn { width: 28px; height: 28px; border-radius: 6px; font-size: 16px;
