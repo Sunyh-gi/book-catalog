@@ -1897,6 +1897,25 @@
       "addedAt": "2026-10-31",
       "doubanUrl": "https://book.douban.com/subject/26861418/",
       "cover": ""
+    },
+    {
+      "id": "b-1793439140098",
+      "title": "历史的终结与最后的人",
+      "author": "[美] 弗朗西斯·福山",
+      "translator": "陈高华 / 孟凡礼 校 / 孟凡礼 / 校注: / 孟凡礼",
+      "subtitle": null,
+      "publisher": "广西师范大学出版社",
+      "year": 2014,
+      "pubDate": "2014-09",
+      "pages": 435,
+      "binding": "精装",
+      "isbn": "9787549555291",
+      "genre": "历史",
+      "series": "理想国译丛",
+      "status": "pending",
+      "addedAt": "2026-10-31",
+      "doubanUrl": "https://book.douban.com/subject/25908550/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2049,7 +2068,9 @@
     "b-1793016610709": "covers/cloud/b-1793016610709.jpg",
     "b-1793238733500": "covers/cloud/b-1793238733500.jpg",
     "b-1793430463490": "covers/cloud/b-1793430463490.jpg",
-    "b-1793430576067": "covers/cloud/b-1793430576067.jpg"
+    "b-1793430576067": "covers/cloud/b-1793430576067.jpg",
+    "b-1790364643195": "covers/cloud/b-1790364643195.jpg",
+    "b-1793439140098": "covers/cloud/b-1793439140098.jpg"
   },
-  "savedAt": "2026-10-31T07:11:46.456Z"
+  "savedAt": "2026-10-31T09:32:25.616Z"
 }
