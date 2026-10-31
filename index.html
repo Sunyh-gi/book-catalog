@@ -1506,7 +1506,7 @@
       /* 推之前先拉一次并合并：另一台设备刚录入的书不会被这一推盖掉 */
       fetchCloudSnapshot(cfg).then(function (cloud) {
         if (cloud) mergeStoreWithCloud(cloud);
-        return doCloudUpload(cfg);
+        return doCloudUpload(cfg, cloud);
       }).then(function (r) {
         autoPushBusy = false;
         if (r.ok && !r.failed) { markClean(); setSyncState("已同步"); }
@@ -1576,8 +1576,9 @@
       });
     }
     function strToB64(s) { return btoa(unescape(encodeURIComponent(s))); }
-    /* 清理仓库中不再被任何书引用的云封面（洁癖模式：删干净） */
-    function cloudCleanOrphans(cfg, payload, keepIds) {
+    /* 清理仓库中不再被任何书引用的云封面（洁癖模式：删干净）。
+       prelisted：调用方本轮刚拉过的 covers/cloud 目录清单，传了就不再重复拉一次 */
+    function cloudCleanOrphans(cfg, payload, keepIds, prelisted) {
       var kept = {};
       Object.keys(payload.cover || {}).forEach(function (bid) {
         var v = payload.cover[bid];
@@ -1586,7 +1587,8 @@
       /* 本轮上传失败的封面不能当孤儿删掉：它多半只是撞了并发，云端那份还在，
          删了会让其他设备跟着掉图（下次同步会补传） */
       (keepIds || []).forEach(function (bid) { kept[CLOUD_COVER_DIR + "/" + bid + ".jpg"] = 1; });
-      return ghListDir(cfg, CLOUD_COVER_DIR).then(function (files) {
+      var listP = prelisted ? Promise.resolve(prelisted) : ghListDir(cfg, CLOUD_COVER_DIR);
+      return listP.then(function (files) {
         var orphans = files.filter(function (f) { return !kept[f.path]; });
         var delOne = function (i) {
           if (i >= orphans.length) return orphans.length;
@@ -1669,16 +1671,84 @@
          （拿旧快照合并会把别处已删的书又捞回来）。 */
       fetchCloudSnapshot(cfg).then(function (cloud) {
         if (cloud) mergeStoreWithCloud(cloud);   // 先合并：另一台设备录入的书不会被覆盖丢失
-        setCloudNote("正在同步…（封面较多时会稍慢）");
-        return doCloudUpload(cfg);
+        setCloudNote("正在同步…（增量：只传有变化的部分）");
+        return doCloudUpload(cfg, cloud);
       }).then(function (r) {
         if (r.ok && !r.failed) { markClean(); setSyncState("已同步"); }
         else setSyncState(r.ok ? "有封面没传上" : "同步失败");
       });
     }
-    /* 上传本机书库到云端。返回 Promise<{ok, failed, removed}> —— autoPush 靠它判断
-       该不该清掉「待同步」标记：有封面没传上就得留着标记，下次自动补传。 */
-    function doCloudUpload(cfg) {
+    /* ---------- 内容指纹（git blob sha1，增量同步的比对基础）----------
+       Worker /gh/list 返回的 sha 就是 GitHub 的 blob sha（对「blob <字节数>\0<内容>」做
+       SHA-1，实测与本地对同一文件算出的值逐字一致）。本地对封面字节算同一指纹：
+       与云端一致 = 内容没变 = 跳过上传。60KB 封面实测 <10ms，纯 JS 无外部依赖。 */
+    function sha1Hex(bytes) {
+      function rol(n, b) { return ((n << b) | (n >>> (32 - b))) | 0; }
+      var H = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
+      var bl = bytes.length;
+      var buf = new ArrayBuffer((((bl + 8) >> 6) + 1) * 64);
+      var u8 = new Uint8Array(buf); u8.set(bytes); u8[bl] = 0x80;
+      new DataView(buf).setUint32(buf.byteLength - 4, bl * 8);
+      var dv = new DataView(buf), w = new Int32Array(80);
+      for (var i = 0; i < buf.byteLength; i += 64) {
+        for (var j = 0; j < 16; j++) w[j] = dv.getInt32(i + j * 4);
+        for (j = 16; j < 80; j++) w[j] = rol(w[j - 3] ^ w[j - 8] ^ w[j - 14] ^ w[j - 16], 1);
+        var a = H[0], b = H[1], c = H[2], d = H[3], e = H[4];
+        for (j = 0; j < 80; j++) {
+          var f, k;
+          if (j < 20) { f = (b & c) | (~b & d); k = 0x5A827999; }
+          else if (j < 40) { f = b ^ c ^ d; k = 0x6ED9EBA1; }
+          else if (j < 60) { f = (b & c) | (b & d) | (c & d); k = 0x8F1BBCDC; }
+          else { f = b ^ c ^ d; k = 0xCA62C1D6; }
+          var t = (rol(a, 5) + f + e + k + w[j]) | 0;
+          e = d; d = c; c = rol(b, 30); b = a; a = t;
+        }
+        H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0;
+        H[3] = (H[3] + d) | 0; H[4] = (H[4] + e) | 0;
+      }
+      return H.map(function (x) { return ("00000000" + (x >>> 0).toString(16)).slice(-8); }).join("");
+    }
+    function gitShaOfB64(b64) {
+      var bin = atob(b64), n = bin.length;
+      var head = "blob " + n + "\u0000";
+      var all = new Uint8Array(head.length + n);
+      var i;
+      for (i = 0; i < head.length; i++) all[i] = head.charCodeAt(i);
+      for (i = 0; i < n; i++) all[head.length + i] = bin.charCodeAt(i);
+      return sha1Hex(all);
+    }
+    /* 除 savedAt 外逐字段比较：内容相同就不再重写 library.json（不产生空提交）。
+       ⚠ 必须用「键排序」的规范化序列化，不能用裸 JSON.stringify——映射键序会漂移：
+       合并把 store.cover 重排成云端顺序、「跳过的封面同步写 / 上传的封面异步写」又让
+       payload.cover 插入次序不定（冒烟 U3b 实抓：封面内容变了但路径没变，纯键序差
+       被误判成「内容变了」而多产生一次提交）。added 按书 id 排序、deleted 排序后比较；
+       g.list 是题材字典的显示顺序，属语义信息，保留原序不排。 */
+    function canonJson(x) {
+      if (x === null || typeof x !== "object") return JSON.stringify(x);
+      if (x instanceof Array) return "[" + x.map(canonJson).join(",") + "]";
+      return "{" + Object.keys(x).sort().map(function (k) {
+        return JSON.stringify(k) + ":" + canonJson(x[k]);
+      }).join(",") + "}";
+    }
+    function samePayload(cloud, payload) {
+      if (!cloud) return false;
+      function norm(p) {
+        var added = (p.added || []).slice().sort(function (a, b) {
+          return (a && a.id || "") < (b && b.id || "") ? -1 : 1;
+        });
+        return canonJson({
+          status: p.status || {}, added: added,
+          g: { list: (p.g && p.g.list) || null, map: (p.g && p.g.map) || {} },
+          deleted: (p.deleted || []).slice().sort(), cover: p.cover || {}
+        });
+      }
+      return norm(cloud) === norm(payload);
+    }
+    /* 上传本机书库到云端（增量）。返回 Promise<{ok, failed, removed}> —— autoPush 靠它判断
+       该不该清掉「待同步」标记：有封面没传上就得留着标记，下次自动补传。
+       cloudSnap = 本轮同步前拉到的云端快照（cloudUpload / autoPush 已拉过，传入省一次请求），
+       用于「library.json 无变化就不重写」的比对。 */
+    function doCloudUpload(cfg, cloudSnap) {
       var payload = {
         status: store.status, added: store.added, g: store.g, deleted: store.deleted,
         cover: {}, savedAt: new Date().toISOString()
@@ -1697,34 +1767,59 @@
           payload.cover[bid] = v;                            // 相对路径封面原样保留
         }
       });
-      var failed = [];
-      /* 封面逐张传，单张失败只记一笔、不中断整轮：否则 library.json 永远不上传，
-         表现为「点了同步、提示失败、云端却一点没变」 */
-      var putCovers = function (i) {
-        if (i >= jobs.length) return Promise.resolve();
-        var j = jobs[i];
-        return ghPutFile(cfg, CLOUD_COVER_DIR + "/" + j.bid + ".jpg", j.data, "sync: 封面 " + j.bid)
-          .then(function () { payload.cover[j.bid] = CLOUD_COVER_DIR + "/" + j.bid + ".jpg"; })
-          .catch(function () { failed.push(j.bid); })
-          .then(function () { return putCovers(i + 1); });
-      };
-      var removed = 0;
-      return putCovers(0).then(function () {
-        return ghPutFile(cfg, CLOUD_DATA, strToB64(JSON.stringify(payload, null, 2)),
-          "sync: 书库云同步 " + payload.savedAt.slice(0, 16).replace("T", " "));
+      var failed = [], skipped = 0, cloudListing = null;
+      /* 先取云端 covers/cloud 目录的 sha 清单再决定传谁：本地对封面字节算 git blob sha，
+         与云端一致 = 内容没变 = 跳过。这是增量同步的核心 —— 过去每轮把所有 dataURL 封面
+         逐张串行重传（95 张 × 2~3s ≈ 3~5 分钟），哪怕只改了一本书的状态。
+         清单拿不到（网络抖动）→ cloudSha 为空 → 全部照传，自动退化为旧全量行为。 */
+      return ghListDir(cfg, CLOUD_COVER_DIR).then(function (files) {
+        cloudListing = files || [];
+        var cloudSha = {};
+        cloudListing.forEach(function (f) { cloudSha[f.name] = f.sha; });
+        var todo = [];
+        jobs.forEach(function (j) {
+          var s = null;
+          try { s = gitShaOfB64(j.data); } catch (e) {}
+          if (s && cloudSha[j.bid + ".jpg"] === s) {
+            payload.cover[j.bid] = CLOUD_COVER_DIR + "/" + j.bid + ".jpg";   // 未变，跳过
+          } else todo.push(j);
+        });
+        skipped = jobs.length - todo.length;
+        /* 剩余的并行传（4 路）。单张失败只记一笔、不中断整轮：否则 library.json 永远
+           不上传，表现为「点了同步、提示失败、云端却一点没变」 */
+        var idx = 0;
+        var worker = function () {
+          if (idx >= todo.length) return Promise.resolve();
+          var j = todo[idx++];
+          return ghPutFile(cfg, CLOUD_COVER_DIR + "/" + j.bid + ".jpg", j.data, "sync: 封面 " + j.bid)
+            .then(function () { payload.cover[j.bid] = CLOUD_COVER_DIR + "/" + j.bid + ".jpg"; })
+            .catch(function () { failed.push(j.bid); })
+            .then(worker);
+        };
+        return Promise.all([worker(), worker(), worker(), worker()]);
       }).then(function () {
-        return cloudCleanOrphans(cfg, payload, failed);
-      }).then(function (n) {
-        removed = n || 0;
-        noteCloudSaved(payload.savedAt);
-        setCloudNote("✅ 已上传云端（" + (payload.added ? payload.added.length : 0) + " 本自定义图书）" +
-          (removed ? "，并清理 " + removed + " 个失效封面" : "") +
-          (failed.length ? "；⚠ 有 " + failed.length + " 张封面没传上，再点一次「立即同步」可补传" : "") +
-          "。其他设备约 1-3 分钟后刷新可见。");
-        return { ok: true, failed: failed.length, removed: removed };
+        /* library.json：除 savedAt 外内容没变就不重写 —— 过去哪怕什么都没改，
+           每次同步也会因 savedAt 不同产生一个新提交 */
+        var same = samePayload(cloudSnap, payload);
+        var putData = same ? Promise.resolve()
+          : ghPutFile(cfg, CLOUD_DATA, strToB64(JSON.stringify(payload, null, 2)),
+              "sync: 书库云同步 " + payload.savedAt.slice(0, 16).replace("T", " "));
+        return putData.then(function () {
+          return cloudCleanOrphans(cfg, payload, failed, cloudListing);
+        }).then(function (n) {
+          var removed = n || 0;
+          noteCloudSaved(same && cloudSnap && cloudSnap.savedAt ? cloudSnap.savedAt : payload.savedAt);
+          setCloudNote(
+            (same ? "✅ 云端已是最新" : "✅ 已上传云端（" + (payload.added ? payload.added.length : 0) + " 本自定义图书）") +
+            (skipped ? "，跳过 " + skipped + " 张未变封面" : "") +
+            (removed ? "，并清理 " + removed + " 个失效封面" : "") +
+            (failed.length ? "；⚠ 有 " + failed.length + " 张封面没传上，再点一次「立即同步」可补传" : "") +
+            (same ? "" : "。其他设备约 1-3 分钟后刷新可见。"));
+          return { ok: true, failed: failed.length, removed: removed };
+        });
       }).catch(function (e) {
         setCloudNote("上传失败：" + e.message);
-        return { ok: false, failed: failed.length, removed: removed };
+        return { ok: false, failed: failed.length, removed: 0 };
       });
     }
     function applyCloudPayload(p, silent) {
