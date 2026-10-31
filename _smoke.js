@@ -10,6 +10,7 @@
 const puppeteer = require('puppeteer-core');
 const path = require('path');
 const http = require('http');
+const crypto = require('crypto');
 
 const ROOT = __dirname;
 const EDGE = process.env.EDGE_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
@@ -405,6 +406,11 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   /* ---------- 场景 H：豆瓣在线路径（mock 本地代理） ---------- */
   /* 场景 T 用到的「假 Worker」记录：口令鉴权 + 书库读写都打在它身上 */
   const ghLog = [];
+  /* 假 Worker 里的 blob sha：用真实 git 算法 —— 页面按「本地指纹 == 云端 sha」跳过重传，
+     mock 必须回真 sha，否则增量路径永远不命中（场景 U） */
+  const cloudSha = {};
+  const gitBlobSha = buf => crypto.createHash('sha1')
+    .update('blob ' + buf.length + '\0').update(buf).digest('hex');
   /* 预置一份空快照：否则 GET 回 sha/text 皆 null，页面会退回去读真实 Pages（github.io），
      把线上真书库合并进来 —— 冒烟就不 hermetic 了 */
   const cloudFiles = {
@@ -493,13 +499,16 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
           if (u.pathname === '/gh/file' && req.method === 'GET') {
             ghLog.push({ method: 'GET', path: p, key: key });
             const t = cloudFiles[p];
-            return send(t === undefined ? { sha: null, text: null } : { sha: 'sha-' + p, text: t });
+            return send(t === undefined ? { sha: null, text: null }
+              : { sha: cloudSha[p] || ('sha-' + p), text: t });
           }
           if (u.pathname === '/gh/file' && req.method === 'PUT') {
             return readBody(d => {
               let b = {}; try { b = JSON.parse(d); } catch (e) {}
               ghLog.push({ method: 'PUT', path: b.path, key: key, body: b.content });
-              cloudFiles[b.path] = Buffer.from(String(b.content || ''), 'base64').toString('utf8');
+              const raw = Buffer.from(String(b.content || ''), 'base64');
+              cloudFiles[b.path] = raw.toString('utf8');
+              cloudSha[b.path] = gitBlobSha(raw);
               send({ ok: true, sha: 'sha-' + b.path });
             });
           }
@@ -508,13 +517,14 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
               let b = {}; try { b = JSON.parse(d); } catch (e) {}
               ghLog.push({ method: 'DELETE', path: b.path, key: key });
               delete cloudFiles[b.path];
+              delete cloudSha[b.path];
               send({ ok: true });
             });
           }
           if (u.pathname === '/gh/list' && req.method === 'GET') {
             const dir = String(p || '').replace(/\/+$/, '') + '/';
             const files = Object.keys(cloudFiles).filter(f => f.indexOf(dir) === 0)
-              .map(f => ({ path: f, sha: 'sha-' + f, name: f.slice(dir.length) }));
+              .map(f => ({ path: f, sha: cloudSha[f] || ('sha-' + f), name: f.slice(dir.length) }));
             return send({ files: files });
           }
           return send({ error: 'not found' }, 404);
@@ -831,6 +841,117 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
     });
   });
   await page3.close();
+
+  /* ---------- 场景 U：增量同步（封面指纹跳过 + 无变化不重写 library.json）----------
+     过去每轮同步把所有 dataURL 封面逐张串行重传（95 张 × 2~3s ≈ 3~5 分钟），哪怕只改了
+     一本书的状态；library.json 也因 savedAt 每次不同而必定重写。现在：
+     ① 封面本地算 git blob sha（与 /gh/list 回的云端 sha 同算法）→ 一致即跳过；
+     ② 除 savedAt 外内容没变 → library.json 不重写（不产生空提交）；
+     ③ 真要传的封面 4 路并行。 */
+  const page4 = await browser.newPage();
+  const err4 = [];
+  page4.on('pageerror', e => err4.push('pageerror: ' + e.message));
+  page4.on('console', m => { if (m.type() === 'error') err4.push('console: ' + m.text()); });
+  await page4.setViewport({ width: 1440, height: 800 });
+  await page4.goto(URL_ONLINE, { waitUntil: 'load' });
+  await sleep(300);
+  /* 重置假 Worker：T 场景推上去的快照会污染合并结果（added 并集会把 T 的 10 本书
+     带进 U 的 payload，「内容没变」就永远不成立） */
+  cloudFiles['data/library.json'] = JSON.stringify({ status: {}, added: [],
+    g: { list: null, map: {} }, deleted: [], cover: {}, savedAt: '2026-01-01T00:00:00.000Z' });
+  Object.keys(cloudFiles).forEach(k => { if (k.indexOf('covers/') === 0) delete cloudFiles[k]; });
+  Object.keys(cloudSha).forEach(k => { delete cloudSha[k]; });
+  ghLog.length = 0;
+  /* 两张内容不同的 1x1 gif（末字节差 1 → sha 必不同） */
+  const CV1 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  const CV2 = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA8';
+  const CV1b = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA9';
+  const putCount = p => ghLog.filter(x => x.method === 'PUT' && x.path === p).length;
+  /* 预置 IDB（先清掉 R 场景残留的 b-idb-3 —— 否则启动 pruneOverlay 清它时把本库标脏，
+     4s 后自发一轮 autoPush，与下面的手动同步计数撞车）与 localStorage */
+  await page4.evaluate(v => new Promise(res => {
+    const rq = indexedDB.open('booklib.covers', 1);
+    rq.onupgradeneeded = () => { rq.result.createObjectStore('covers'); };
+    rq.onsuccess = () => {
+      const db = rq.result, tx = db.transaction('covers', 'readwrite'), os = tx.objectStore('covers');
+      os.clear(); os.put(v.a, 'b-2001'); os.put(v.b, 'b-2002');
+      tx.oncomplete = () => { db.close(); res(true); };
+      tx.onerror = () => { db.close(); res(false); };
+    };
+  }), { a: CV1, b: CV2 });
+  await page4.evaluate(d => {
+    localStorage.setItem('booklib.v1', JSON.stringify(d));
+    localStorage.setItem('booklib.cloud', JSON.stringify({ key: 'test-key' }));
+    localStorage.setItem('booklib.doubancloud', JSON.stringify({ url: 'http://127.0.0.1:9999' }));
+  }, { status: {}, g: { list: null, map: {} }, deleted: [], cover: {},
+    added: [
+      { id: 'b-2001', title: '增量同步测试甲', author: '', cover: '' },
+      { id: 'b-2002', title: '增量同步测试乙', author: '', cover: '' },
+    ] });
+  await page4.reload({ waitUntil: 'load' });
+  await sleep(900);
+  /* U1 首次同步：云端没有这两张封面 → 全部上传，library.json 也写 */
+  await page4.evaluate(() => document.getElementById('btnCloudUp').click());
+  await sleep(1500);
+  ok('U1 首次同步：两张封面与 library.json 都上传',
+    putCount('covers/cloud/b-2001.jpg') === 1 && putCount('covers/cloud/b-2002.jpg') === 1 &&
+    putCount('data/library.json') === 1,
+    JSON.stringify({ a: putCount('covers/cloud/b-2001.jpg'), b: putCount('covers/cloud/b-2002.jpg'),
+      d: putCount('data/library.json') }));
+  /* U2 内容没变：封面按指纹跳过、library.json 只差 savedAt → 全程零上传 */
+  const b2 = { a: putCount('covers/cloud/b-2001.jpg'), b: putCount('covers/cloud/b-2002.jpg'),
+    d: putCount('data/library.json') };
+  await page4.evaluate(() => document.getElementById('btnCloudUp').click());
+  await sleep(1500);
+  ok('U2 内容没变：封面跳过 + library.json 不重写（零新增 PUT）',
+    putCount('covers/cloud/b-2001.jpg') === b2.a && putCount('covers/cloud/b-2002.jpg') === b2.b &&
+    putCount('data/library.json') === b2.d,
+    JSON.stringify({ before: b2, after: { a: putCount('covers/cloud/b-2001.jpg'),
+      b: putCount('covers/cloud/b-2002.jpg'), d: putCount('data/library.json') } }));
+  ok('U2b 同步完成后无待同步标记',
+    (await page4.evaluate(() => localStorage.getItem('booklib.dirty'))) === null);
+  /* U3 换掉 b-2001 的封面（重载让 coverCache 读到新 IDB 值）：只有它重传，
+     另一张仍跳过；封面路径没变 → library.json 也不重写 */
+  await page4.evaluate(v => new Promise(res => {
+    const rq = indexedDB.open('booklib.covers', 1);
+    rq.onsuccess = () => {
+      const db = rq.result, tx = db.transaction('covers', 'readwrite');
+      tx.objectStore('covers').put(v, 'b-2001');
+      tx.oncomplete = () => { db.close(); res(true); };
+      tx.onerror = () => { db.close(); res(false); };
+    };
+  }), CV1b);
+  await page4.reload({ waitUntil: 'load' });
+  await sleep(900);
+  const b3 = { a: putCount('covers/cloud/b-2001.jpg'), b: putCount('covers/cloud/b-2002.jpg'),
+    d: putCount('data/library.json') };
+  await page4.evaluate(() => document.getElementById('btnCloudUp').click());
+  await sleep(1500);
+  ok('U3 只重传内容变过的那一张（另一张照旧跳过）',
+    putCount('covers/cloud/b-2001.jpg') === b3.a + 1 &&
+    putCount('covers/cloud/b-2002.jpg') === b3.b,
+    JSON.stringify({ before: b3, a: putCount('covers/cloud/b-2001.jpg'),
+      b: putCount('covers/cloud/b-2002.jpg') }));
+  ok('U3b 封面内容变了但路径没变：library.json 不重写',
+    putCount('data/library.json') === b3.d,
+    b3.d + ' -> ' + putCount('data/library.json'));
+  /* U4 再来一轮：又回到全跳过（收敛态） */
+  const b4 = { a: putCount('covers/cloud/b-2001.jpg'), d: putCount('data/library.json') };
+  await page4.evaluate(() => document.getElementById('btnCloudUp').click());
+  await sleep(1500);
+  ok('U4 收敛：后续同步零新增 PUT',
+    putCount('covers/cloud/b-2001.jpg') === b4.a && putCount('data/library.json') === b4.d,
+    JSON.stringify({ before: b4, after: { a: putCount('covers/cloud/b-2001.jpg'),
+      d: putCount('data/library.json') } }));
+  ok('U5 增量同步链路无 JS 报错', err4.filter(function (e) {
+    return e.indexOf('ERR_CONNECTION_REFUSED') === -1 && e.indexOf('Failed to load resource') === -1;
+  }).length === 0, err4.join(' | ').slice(0, 300));
+  await page4.evaluate(() => {
+    ['booklib.v1', 'booklib.cloud', 'booklib.doubancloud', 'booklib.dirty'].forEach(function (k) {
+      localStorage.removeItem(k);
+    });
+  });
+  await page4.close();
   mock.close();
 
   console.log('\n结果：' + pass + ' PASS / ' + fail + ' FAIL');
