@@ -403,7 +403,7 @@
       "author": "好好住",
       "translator": "",
       "subtitle": "从零开始的装修攻略",
-      "publisher": "���京联合出版公司",
+      "publisher": "北京联合出版公司",
       "year": 2017,
       "pubDate": "2017-11",
       "pages": 224,
@@ -694,7 +694,7 @@
       "pages": 248,
       "binding": "平装",
       "isbn": "9787559655370",
-      "genre": "地���",
+      "genre": "地理",
       "series": "地道风物",
       "status": "pending",
       "addedAt": "2026-09-26",
@@ -1011,7 +1011,7 @@
       "author": "[澳] Lonely Planet 公司",
       "translator": "",
       "subtitle": null,
-      "publisher": "中���地图出版社",
+      "publisher": "中国地图出版社",
       "year": 2022,
       "pubDate": "2022-06",
       "pages": 239,
@@ -1748,7 +1748,7 @@
     },
     {
       "id": "b-1792659115887",
-      "title": "从阿��泰山到横断山",
+      "title": "从阿尔泰山到横断山",
       "author": "李忠东",
       "translator": "",
       "subtitle": "地质工作者手记",
@@ -2075,5 +2075,5 @@
     "b-1793439140098": "covers/cloud/b-1793439140098.jpg",
     "b-1794541973495": "covers/cloud/b-1794541973495.jpg"
   },
-  "savedAt": "2026-11-13T04:14:44.105Z"
+  "savedAt": "2026-11-13T04:25:33.073Z"
 }
