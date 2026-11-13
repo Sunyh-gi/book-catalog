@@ -1975,6 +1975,25 @@
       "addedAt": "2026-11-13",
       "doubanUrl": "https://book.douban.com/subject/10471333/",
       "cover": ""
+    },
+    {
+      "id": "b-1794578463853",
+      "title": "苏联的最后一天",
+      "author": "[爱尔兰] 康纳·奥克莱利",
+      "translator": "沈力",
+      "subtitle": "莫斯科，1991年12 月25日",
+      "publisher": "广西师范大学出版社",
+      "year": 2014,
+      "pubDate": "2014-09",
+      "pages": 361,
+      "binding": "精装",
+      "isbn": "9787549545049",
+      "genre": "历史",
+      "series": "理想国译丛",
+      "status": "pending",
+      "addedAt": "2026-11-13",
+      "doubanUrl": "https://book.douban.com/subject/25758414/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2135,7 +2154,8 @@
     "b-1794541973495": "covers/cloud/b-1794541973495.jpg",
     "b-1794576933071": "covers/cloud/b-1794576933071.jpg",
     "b-1794577390445": "covers/cloud/b-1794577390445.jpg",
-    "b-1794578401491": "covers/cloud/b-1794578401491.jpg"
+    "b-1794578401491": "covers/cloud/b-1794578401491.jpg",
+    "b-1794578463853": "covers/cloud/b-1794578463853.jpg"
   },
-  "savedAt": "2026-11-13T14:00:07.559Z"
+  "savedAt": "2026-11-13T14:01:12.220Z"
 }
