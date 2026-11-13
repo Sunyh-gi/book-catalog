@@ -22,7 +22,7 @@
     "b-1790362634631": "owned",
     "b-1790362727724": "owned",
     "b-1790364643195": "owned",
-    "b-1790365012255": "pending",
+    "b-1790365012255": "owned",
     "b-1790365152404": "owned",
     "b-1790365245932": "owned",
     "b-1790365335568": "owned",
@@ -71,7 +71,8 @@
     "b-1792645010500": "owned",
     "b-1792645090526": "owned",
     "b-1793430463490": "owned",
-    "b-1793430576067": "owned"
+    "b-1793430576067": "owned",
+    "b-1794541740150": "pending"
   },
   "added": [
     {
@@ -1916,6 +1917,25 @@
       "addedAt": "2026-10-31",
       "doubanUrl": "https://book.douban.com/subject/25908550/",
       "cover": ""
+    },
+    {
+      "id": "b-1794541740150",
+      "title": "西藏",
+      "author": "[澳] Lonely Planet 公司",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "",
+      "year": 2016,
+      "pubDate": null,
+      "pages": null,
+      "binding": null,
+      "isbn": "9787503194160",
+      "genre": "旅行",
+      "series": "IN系列",
+      "status": "pending",
+      "addedAt": "2026-11-13",
+      "doubanUrl": "",
+      "cover": ""
     }
   ],
   "g": {
@@ -2072,5 +2092,5 @@
     "b-1790364643195": "covers/cloud/b-1790364643195.jpg",
     "b-1793439140098": "covers/cloud/b-1793439140098.jpg"
   },
-  "savedAt": "2026-11-13T03:42:44.993Z"
+  "savedAt": "2026-11-13T03:49:06.093Z"
 }
