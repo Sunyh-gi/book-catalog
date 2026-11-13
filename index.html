@@ -2384,7 +2384,34 @@
        要等到下次云同步才清掉，中间一直挂在 localStorage 里。只在真有残留时写回。
        封面必须先读进内存（coverOf 是同步的），否则首屏渲染会漏掉 IDB 里的封面；
        loadCovers 顺带把旧版留在 localStorage 的 dataURL 迁进 IDB，并告诉我们要不要落盘。 */
+    /* ---------- 启动自愈：出版社字段误并了出版日期 ----------
+       豆瓣部分条目的日期标签是「出版时间」（不是「出版年」），旧解析不认识 → 该行被当续行
+       拼进出版社（实战 2026-11-13：《西藏》publisher = "中国地图出版社 / 出版时间: 2016-8"，
+       pubDate 为 null）。Worker 源头已修（LABELS 加「出版时间」）；这里把已入库的旧记录
+       拆回来：publisher 去掉日期尾巴、pubDate 用拆出的值补（pubDate 为空才落，不覆盖手填）。
+       返回「是否拆过」，真拆了才 saveStore。 */
+    function healPublisherDate() {
+      var touched = false;
+      function healOne(b) {
+        if (!b || !b.publisher) return;
+        /* 日期尾巴三种形态：2016-8 / 2019年3月 / 2019年3月15日（{0,2} 容两段中文月日），
+           尾随的 月/年/日 字由 [月年日]? 吃掉 */
+        var m = String(b.publisher).match(/[\s/]+(?:出版时间)\s*[:：]\s*(\d{4}(?:[-./年月]\d{1,2}){0,2})\s*[月年日]?\s*$/);
+        if (!m) return;
+        b.publisher = b.publisher.slice(0, m.index).replace(/[\s/]+$/, "");
+        if (!b.pubDate) {
+          var parts = m[1].split(/[-./年月]+/).filter(Boolean);
+          if (parts[0] && parts[1]) b.pubDate = parts[0] + "-" + ("0" + parseInt(parts[1], 10)).slice(-2);
+          else if (parts[0]) b.pubDate = parts[0];
+        }
+        touched = true;
+      }
+      (window.BOOKS || []).forEach(healOne);
+      (store.added || []).forEach(healOne);
+      return touched;
+    }
     loadCovers().then(function (migrated) {
+      if (healPublisherDate()) { saveStore(); }
       if (pruneOverlay() || migrated) saveStore();
       renderAll();
       probeDouban();
