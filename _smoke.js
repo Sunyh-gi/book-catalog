@@ -943,6 +943,41 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
     putCount('covers/cloud/b-2001.jpg') === b4.a && putCount('data/library.json') === b4.d,
     JSON.stringify({ before: b4, after: { a: putCount('covers/cloud/b-2001.jpg'),
       d: putCount('data/library.json') } }));
+  /* ---------- 场景 V：出版社误并出版日期的启动自愈 ----------
+     豆瓣部分条目日期标签是「出版时间」，旧 Worker 解析不认识 → 被当续行拼进 publisher。
+     锁死：启动时 publisher 去掉日期尾巴、pubDate 补上、社名与年份原样保留。 */
+  await page4.evaluate(d => {
+    localStorage.setItem('booklib.v1', JSON.stringify(d));
+  }, { status: {}, g: { list: null, map: {} }, deleted: [], cover: {},
+    added: [
+      { id: 'b-3001', title: '西藏', publisher: '中国地图出版社 / 出版时间: 2016-8',
+        pubDate: null, year: 2016, pages: 424 },
+      { id: 'b-3002', title: '没污染的书', publisher: '中信出版社', pubDate: '2014-10', year: 2014 },
+      { id: 'b-3003', title: '日期标签变体', publisher: '某某出版社 / 出版时间：2019年3月', pubDate: null, year: 2019 },
+      { id: 'b-3004', title: 'pubDate 已有值不覆盖', publisher: '某某出版社 / 出版时间: 2020-5', pubDate: '2020-05', year: 2020 },
+    ] });
+  await page4.reload({ waitUntil: 'load' });
+  await sleep(900);
+  const healed = await page4.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('booklib.v1'));
+    const get = id => s.added.find(b => b.id === id);
+    return {
+      tibet: get('b-3001'), clean: get('b-3002'),
+      variant: get('b-3003'), kept: get('b-3004'),
+    };
+  });
+  ok('V1 《西藏》社名去尾、日期拆进 pubDate',
+    healed.tibet.publisher === '中国地图出版社' && healed.tibet.pubDate === '2016-08' &&
+    healed.tibet.year === 2016 && healed.tibet.pages === 424,
+    JSON.stringify({ p: healed.tibet.publisher, d: healed.tibet.pubDate }));
+  ok('V2 无污染书原样保留', healed.clean.publisher === '中信出版社' && healed.clean.pubDate === '2014-10',
+    JSON.stringify({ p: healed.clean.publisher, d: healed.clean.pubDate }));
+  ok('V3 中文日期变体「2019年3月」也拆',
+    healed.variant.publisher === '某某出版社' && healed.variant.pubDate === '2019-03',
+    JSON.stringify({ p: healed.variant.publisher, d: healed.variant.pubDate }));
+  ok('V4 pubDate 已有值不被自愈覆盖（社名照拆）',
+    healed.kept.publisher === '某某出版社' && healed.kept.pubDate === '2020-05',
+    JSON.stringify({ p: healed.kept.publisher, d: healed.kept.pubDate }));
   ok('U5 增量同步链路无 JS 报错', err4.filter(function (e) {
     return e.indexOf('ERR_CONNECTION_REFUSED') === -1 && e.indexOf('Failed to load resource') === -1;
   }).length === 0, err4.join(' | ').slice(0, 300));
