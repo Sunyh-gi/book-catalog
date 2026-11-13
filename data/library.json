@@ -1994,6 +1994,25 @@
       "addedAt": "2026-11-13",
       "doubanUrl": "https://book.douban.com/subject/25758414/",
       "cover": ""
+    },
+    {
+      "id": "b-1794578518009",
+      "title": "古拉格之恋",
+      "author": "[英] 奥兰多·费吉斯",
+      "translator": "李广平",
+      "subtitle": "一个爱情与求生的真实故事",
+      "publisher": "广西师范大学出版社",
+      "year": 2016,
+      "pubDate": "2016-08",
+      "pages": 348,
+      "binding": "精装",
+      "isbn": "9787549585502",
+      "genre": "历史",
+      "series": "理想国译丛",
+      "status": "pending",
+      "addedAt": "2026-11-13",
+      "doubanUrl": "https://book.douban.com/subject/26840828/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2155,7 +2174,8 @@
     "b-1794576933071": "covers/cloud/b-1794576933071.jpg",
     "b-1794577390445": "covers/cloud/b-1794577390445.jpg",
     "b-1794578401491": "covers/cloud/b-1794578401491.jpg",
-    "b-1794578463853": "covers/cloud/b-1794578463853.jpg"
+    "b-1794578463853": "covers/cloud/b-1794578463853.jpg",
+    "b-1794578518009": "covers/cloud/b-1794578518009.jpg"
   },
-  "savedAt": "2026-11-13T14:01:12.220Z"
+  "savedAt": "2026-11-13T14:02:06.484Z"
 }
