@@ -1897,6 +1897,25 @@
       "addedAt": "2026-10-31",
       "doubanUrl": "https://book.douban.com/subject/25908550/",
       "cover": ""
+    },
+    {
+      "id": "b-1794541973495",
+      "title": "西藏",
+      "author": "[澳] Lonely Planet 公司",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "中国地图出版社 / 出版时间: 2016-8",
+      "year": 2016,
+      "pubDate": null,
+      "pages": 424,
+      "binding": "平装",
+      "isbn": "9787503194160",
+      "genre": "社科",
+      "series": "IN系列",
+      "status": "pending",
+      "addedAt": "2026-11-13",
+      "doubanUrl": "https://book.douban.com/subject/26878557/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2053,7 +2072,8 @@
     "b-1793430463490": "covers/cloud/b-1793430463490.jpg",
     "b-1793430576067": "covers/cloud/b-1793430576067.jpg",
     "b-1790364643195": "covers/cloud/b-1790364643195.jpg",
-    "b-1793439140098": "covers/cloud/b-1793439140098.jpg"
+    "b-1793439140098": "covers/cloud/b-1793439140098.jpg",
+    "b-1794541973495": "covers/cloud/b-1794541973495.jpg"
   },
-  "savedAt": "2026-11-13T03:52:25.020Z"
+  "savedAt": "2026-11-13T03:53:01.632Z"
 }
