@@ -415,7 +415,7 @@
     </div>
     <nav class="nav" id="nav"></nav>
     <div class="cloud-row">
-      <button class="cloud-btn" id="btnCloud">☁ 云同步</button>
+      <button class="cloud-btn" id="btnCloud">云同步</button>
       <span class="cloud-state" id="cloudState"></span>
     </div>
     <div class="sidebar-foot">
@@ -1427,7 +1427,7 @@
       else localStorage.removeItem("booklib.doubancloud");
       updateCloudState();
       updateCloudBadges();
-      setCloudNote(key ? "✅ 口令已保存（仅存本机浏览器）" : "未填口令：可以看云端书库，但改动同步不上去。");
+      setCloudNote(key ? "口令已保存（仅存本机浏览器）" : "未填口令：可以看云端书库，但改动同步不上去。");
       probeDouban();          // 豆瓣地址可能被改（或清空），重新探一次
       if (key) scheduleAutoPush();
     }
@@ -1524,7 +1524,7 @@
     function ghFail(status, body) {
       var msg = "";
       try { msg = (JSON.parse(body) || {}).error || ""; } catch (e) {}
-      if (status === 401) return "口令不对（或云端 Worker 还没配 BOOK_KEY）—— 到「☁ 云同步」里重填一次";
+      if (status === 401) return "口令不对（或云端 Worker 还没配 BOOK_KEY）—— 到「云同步」里重填一次";
       if (status === 503) return "云端 Worker 还没配 GH_PAT：在本机跑一次 node _cf_deploy.js --secrets";
       return "云端写入失败 HTTP " + status + (msg ? "：" + msg : "");
     }
@@ -1665,7 +1665,7 @@
     }
     function cloudUpload() {
       var cfg = cloudCfg();
-      if (!cfg) { setCloudNote("请先在「☁ 云同步」里填写并保存云端口令。"); return; }
+      if (!cfg) { setCloudNote("请先在「云同步」里填写并保存云端口令。"); return; }
       setCloudNote("正在与云端合并…");
       /* 走 fetchCloudSnapshot：有口令时经 Worker 直读仓库，避开 Pages 的 1-3 分钟 CDN 延迟
          （拿旧快照合并会把别处已删的书又捞回来）。 */
@@ -1819,10 +1819,10 @@
           if (skipped) coverBits.push("比对一致 " + skipped + " 张");
           if (pathDirect) coverBits.push("未存原图 " + pathDirect + " 张");
           setCloudNote(
-            (same ? "✅ 云端已是最新" : "✅ 已上传云端（" + (payload.added ? payload.added.length : 0) + " 本自定义图书）") +
+            (same ? "云端已是最新" : "已上传云端（" + (payload.added ? payload.added.length : 0) + " 本自定义图书）") +
             (coverBits.length ? "，封面：" + coverBits.join("、") : "") +
             (removed ? "，并清理 " + removed + " 个失效封面" : "") +
-            (failed.length ? "；⚠ 有 " + failed.length + " 张封面没传上，再点一次「立即同步」可补传" : "") +
+            (failed.length ? "；有 " + failed.length + " 张封面没传上，再点一次「立即同步」可补传" : "") +
             (same ? "" : "。其他设备约 1-3 分钟后刷新可见。"));
           return { ok: true, failed: failed.length, removed: removed };
         });
@@ -1860,7 +1860,7 @@
           var n = p.added ? p.added.length : 0;
           if (!confirm("用云端数据覆盖本机？本机现有的录入 / 标记 / 题材将被替换（云端共 " + n + " 本自定义图书，" + String(p.savedAt || "").replace("T", " ").slice(0, 16) + " 保存）。")) return;
           applyCloudPayload(p);
-          setCloudNote("✅ 已从云端恢复 " + n + " 本自定义图书。");
+          setCloudNote("已从云端恢复 " + n + " 本自定义图书。");
         })
         .catch(function (e) { setCloudNote("恢复失败：" + e.message); });
     }
