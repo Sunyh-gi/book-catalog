@@ -1936,6 +1936,25 @@
       "addedAt": "2026-11-13",
       "doubanUrl": "https://book.douban.com/subject/34880879/",
       "cover": ""
+    },
+    {
+      "id": "b-1794577390445",
+      "title": "雷震传",
+      "author": "范泓",
+      "translator": "",
+      "subtitle": "民主在风雨中前行",
+      "publisher": "广西师范大学出版社",
+      "year": 2013,
+      "pubDate": "2013-04",
+      "pages": 549,
+      "binding": "精装",
+      "isbn": "9787563345786",
+      "genre": "政治",
+      "series": "温故书坊",
+      "status": "pending",
+      "addedAt": "2026-11-13",
+      "doubanUrl": "https://book.douban.com/subject/1009520/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2094,7 +2113,8 @@
     "b-1790364643195": "covers/cloud/b-1790364643195.jpg",
     "b-1793439140098": "covers/cloud/b-1793439140098.jpg",
     "b-1794541973495": "covers/cloud/b-1794541973495.jpg",
-    "b-1794576933071": "covers/cloud/b-1794576933071.jpg"
+    "b-1794576933071": "covers/cloud/b-1794576933071.jpg",
+    "b-1794577390445": "covers/cloud/b-1794577390445.jpg"
   },
-  "savedAt": "2026-11-13T13:37:56.459Z"
+  "savedAt": "2026-11-13T13:43:17.576Z"
 }
