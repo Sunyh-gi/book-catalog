@@ -1765,9 +1765,10 @@
           jobs.push({ bid: bid, data: v.split(",")[1] });   // dataURL → 独立封面文件（Git 自动去重）
         } else {
           payload.cover[bid] = v;                            // 相对路径封面原样保留
+          pathDirect++;   // 未存原图（云端路径引用）：不参与指纹比对，也不计入「比对一致」
         }
       });
-      var failed = [], skipped = 0, cloudListing = null;
+      var failed = [], skipped = 0, newly = 0, pathDirect = 0, cloudListing = null;
       /* 先取云端 covers/cloud 目录的 sha 清单再决定传谁：本地对封面字节算 git blob sha，
          与云端一致 = 内容没变 = 跳过。这是增量同步的核心 —— 过去每轮把所有 dataURL 封面
          逐张串行重传（95 张 × 2~3s ≈ 3~5 分钟），哪怕只改了一本书的状态。
@@ -1792,7 +1793,7 @@
           if (idx >= todo.length) return Promise.resolve();
           var j = todo[idx++];
           return ghPutFile(cfg, CLOUD_COVER_DIR + "/" + j.bid + ".jpg", j.data, "sync: 封面 " + j.bid)
-            .then(function () { payload.cover[j.bid] = CLOUD_COVER_DIR + "/" + j.bid + ".jpg"; })
+            .then(function () { payload.cover[j.bid] = CLOUD_COVER_DIR + "/" + j.bid + ".jpg"; newly++; })
             .catch(function () { failed.push(j.bid); })
             .then(worker);
         };
@@ -1809,9 +1810,17 @@
         }).then(function (n) {
           var removed = n || 0;
           noteCloudSaved(same && cloudSnap && cloudSnap.savedAt ? cloudSnap.savedAt : payload.savedAt);
+          /* 封面三类计数相加 = 封面总数，口径必须完整：
+             「比对一致」= 本机存原图且指纹比对通过；「未存原图」= 本机只有云端路径引用
+             （别处录入的书等），本来就在云端、无需上传也不参与比对。
+             旧文案「跳过 N 张未变封面」只数了前一类，用户误读成「97-95=少了2本」（2026-11-13 实战）。 */
+          var coverBits = [];
+          if (newly) coverBits.push("新传 " + newly + " 张");
+          if (skipped) coverBits.push("比对一致 " + skipped + " 张");
+          if (pathDirect) coverBits.push("未存原图 " + pathDirect + " 张");
           setCloudNote(
             (same ? "✅ 云端已是最新" : "✅ 已上传云端（" + (payload.added ? payload.added.length : 0) + " 本自定义图书）") +
-            (skipped ? "，跳过 " + skipped + " 张未变封面" : "") +
+            (coverBits.length ? "，封面：" + coverBits.join("、") : "") +
             (removed ? "，并清理 " + removed + " 个失效封面" : "") +
             (failed.length ? "；⚠ 有 " + failed.length + " 张封面没传上，再点一次「立即同步」可补传" : "") +
             (same ? "" : "。其他设备约 1-3 分钟后刷新可见。"));
