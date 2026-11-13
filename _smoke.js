@@ -898,6 +898,9 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
     putCount('data/library.json') === 1,
     JSON.stringify({ a: putCount('covers/cloud/b-2001.jpg'), b: putCount('covers/cloud/b-2002.jpg'),
       d: putCount('data/library.json') }));
+  const noteU1 = await page4.evaluate(() => document.getElementById('cloudNote').textContent);
+  ok('U1b 同步文案含「封面：新传 2 张」（三类计数口径）',
+    noteU1.indexOf('封面：新传 2 张') > -1 && noteU1.indexOf('跳过') === -1, noteU1);
   /* U2 内容没变：封面按指纹跳过、library.json 只差 savedAt → 全程零上传 */
   const b2 = { a: putCount('covers/cloud/b-2001.jpg'), b: putCount('covers/cloud/b-2002.jpg'),
     d: putCount('data/library.json') };
@@ -910,6 +913,10 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
       b: putCount('covers/cloud/b-2002.jpg'), d: putCount('data/library.json') } }));
   ok('U2b 同步完成后无待同步标记',
     (await page4.evaluate(() => localStorage.getItem('booklib.dirty'))) === null);
+  const noteU2 = await page4.evaluate(() => document.getElementById('cloudNote').textContent);
+  ok('U2c 文案 =「云端已是最新 + 比对一致 2 张」，不再出现「跳过」',
+    noteU2.indexOf('云端已是最新') > -1 && noteU2.indexOf('比对一致 2 张') > -1 &&
+    noteU2.indexOf('跳过') === -1, noteU2);
   /* U3 换掉 b-2001 的封面（重载让 coverCache 读到新 IDB 值）：只有它重传，
      另一张仍跳过；封面路径没变 → library.json 也不重写 */
   await page4.evaluate(v => new Promise(res => {
