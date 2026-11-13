@@ -1956,6 +1956,25 @@
       "addedAt": "2026-11-13",
       "doubanUrl": "https://book.douban.com/subject/1009520/",
       "cover": ""
+    },
+    {
+      "id": "b-1794578401491",
+      "title": "叫魂",
+      "author": "[美] 孔飞力",
+      "translator": "陈兼 / 刘昶",
+      "subtitle": "1768年中国妖术大恐慌",
+      "publisher": "生活·读书·新知三联书店 上海三联书店",
+      "year": 2012,
+      "pubDate": "2012-05",
+      "pages": 368,
+      "binding": "平装",
+      "isbn": "9787108037909",
+      "genre": "社科",
+      "series": "孔飞力著作集",
+      "status": "pending",
+      "addedAt": "2026-11-13",
+      "doubanUrl": "https://book.douban.com/subject/10471333/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2115,7 +2134,8 @@
     "b-1793439140098": "covers/cloud/b-1793439140098.jpg",
     "b-1794541973495": "covers/cloud/b-1794541973495.jpg",
     "b-1794576933071": "covers/cloud/b-1794576933071.jpg",
-    "b-1794577390445": "covers/cloud/b-1794577390445.jpg"
+    "b-1794577390445": "covers/cloud/b-1794577390445.jpg",
+    "b-1794578401491": "covers/cloud/b-1794578401491.jpg"
   },
-  "savedAt": "2026-11-13T13:47:29.790Z"
+  "savedAt": "2026-11-13T14:00:07.559Z"
 }
