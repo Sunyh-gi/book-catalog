@@ -1916,6 +1916,25 @@
       "addedAt": "2026-11-13",
       "doubanUrl": "https://book.douban.com/subject/26878557/",
       "cover": ""
+    },
+    {
+      "id": "b-1794576933071",
+      "title": "乡土中国 生育制度 乡土重建",
+      "author": "费孝通",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "长江文艺出版社",
+      "year": 2019,
+      "pubDate": "2019-10",
+      "pages": 518,
+      "binding": "平装",
+      "isbn": "9787570212354",
+      "genre": "社科",
+      "series": "长江人文馆",
+      "status": "pending",
+      "addedAt": "2026-11-13",
+      "doubanUrl": "https://book.douban.com/subject/34880879/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2073,7 +2092,8 @@
     "b-1793430576067": "covers/cloud/b-1793430576067.jpg",
     "b-1790364643195": "covers/cloud/b-1790364643195.jpg",
     "b-1793439140098": "covers/cloud/b-1793439140098.jpg",
-    "b-1794541973495": "covers/cloud/b-1794541973495.jpg"
+    "b-1794541973495": "covers/cloud/b-1794541973495.jpg",
+    "b-1794576933071": "covers/cloud/b-1794576933071.jpg"
   },
-  "savedAt": "2026-11-13T04:25:33.073Z"
+  "savedAt": "2026-11-13T13:35:39.043Z"
 }
