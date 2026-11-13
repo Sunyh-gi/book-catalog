@@ -917,6 +917,9 @@ const nav = page => (kind, value) => page.evaluate((k, v) => {
   ok('U2c 文案 =「云端已是最新 + 比对一致 2 张」，不再出现「跳过」',
     noteU2.indexOf('云端已是最新') > -1 && noteU2.indexOf('比对一致 2 张') > -1 &&
     noteU2.indexOf('跳过') === -1, noteU2);
+  ok('U2d 同步文案不含 emoji（全项目 UI 无 emoji 口径）',
+    !/[\u{1F300}-\u{1FAFF}\u{2705}\u{26A0}\u{2601}]/u.test(noteU2) &&
+    !/[\u{1F300}-\u{1FAFF}\u{2705}\u{26A0}\u{2601}]/u.test(noteU1), noteU2);
   /* U3 换掉 b-2001 的封面（重载让 coverCache 读到新 IDB 值）：只有它重传，
      另一张仍跳过；封面路径没变 → library.json 也不重写 */
   await page4.evaluate(v => new Promise(res => {
