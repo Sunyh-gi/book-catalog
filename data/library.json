@@ -2070,6 +2070,25 @@
       "addedAt": "2026-11-14",
       "doubanUrl": "https://book.douban.com/subject/36966387/",
       "cover": ""
+    },
+    {
+      "id": "b-1794621756464",
+      "title": "命运攸关的抉择",
+      "author": "[英] 伊恩·克肖",
+      "translator": "顾剑",
+      "subtitle": "1940-1941年间改变世界的十个决策",
+      "publisher": "浙江人民出版社",
+      "year": 2017,
+      "pubDate": "2017-07",
+      "pages": 576,
+      "binding": "精装",
+      "isbn": "9787213079863",
+      "genre": "历史",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-11-14",
+      "doubanUrl": "https://book.douban.com/subject/27046300/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2236,7 +2255,8 @@
     "b-1794578518009": "covers/cloud/b-1794578518009.jpg",
     "b-1794579274027": "covers/cloud/b-1794579274027.jpg",
     "b-1794621278176": "covers/cloud/b-1794621278176.jpg",
-    "b-1794621389647": "covers/cloud/b-1794621389647.jpg"
+    "b-1794621389647": "covers/cloud/b-1794621389647.jpg",
+    "b-1794621756464": "covers/cloud/b-1794621756464.jpg"
   },
-  "savedAt": "2026-11-14T01:56:35.304Z"
+  "savedAt": "2026-11-14T02:02:43.064Z"
 }
