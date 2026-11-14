@@ -2089,6 +2089,25 @@
       "addedAt": "2026-11-14",
       "doubanUrl": "https://book.douban.com/subject/27046300/",
       "cover": ""
+    },
+    {
+      "id": "b-1794631378834",
+      "title": "繁荣与停滞",
+      "author": "[日] 伊藤隆敏",
+      "translator": "郭金兴",
+      "subtitle": "日本经济发展和转型",
+      "publisher": "中信出版社",
+      "year": 2022,
+      "pubDate": "2022-09",
+      "pages": 652,
+      "binding": "精装",
+      "isbn": "9787521741667",
+      "genre": "经济",
+      "series": "CIDEG文库",
+      "status": "pending",
+      "addedAt": "2026-11-14",
+      "doubanUrl": "https://book.douban.com/subject/36093153/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2256,7 +2275,8 @@
     "b-1794579274027": "covers/cloud/b-1794579274027.jpg",
     "b-1794621278176": "covers/cloud/b-1794621278176.jpg",
     "b-1794621389647": "covers/cloud/b-1794621389647.jpg",
-    "b-1794621756464": "covers/cloud/b-1794621756464.jpg"
+    "b-1794621756464": "covers/cloud/b-1794621756464.jpg",
+    "b-1794631378834": "covers/cloud/b-1794631378834.jpg"
   },
-  "savedAt": "2026-11-14T02:02:43.064Z"
+  "savedAt": "2026-11-14T04:43:04.849Z"
 }
