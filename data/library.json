@@ -2127,6 +2127,25 @@
       "addedAt": "2026-11-14",
       "doubanUrl": "https://book.douban.com/subject/35565575/",
       "cover": ""
+    },
+    {
+      "id": "b-1794643734371",
+      "title": "一线：县域治理的底层逻辑",
+      "author": "杨华",
+      "translator": "",
+      "subtitle": "县域治理的底层逻辑",
+      "publisher": "天津人民出版社",
+      "year": 2026,
+      "pubDate": "2026-10",
+      "pages": 312,
+      "binding": "平装带外护封",
+      "isbn": "9787201217208",
+      "genre": "政治",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-11-14",
+      "doubanUrl": "https://book.douban.com/subject/38935027/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2296,7 +2315,8 @@
     "b-1794621389647": "covers/cloud/b-1794621389647.jpg",
     "b-1794621756464": "covers/cloud/b-1794621756464.jpg",
     "b-1794631378834": "covers/cloud/b-1794631378834.jpg",
-    "b-1794632042996": "covers/cloud/b-1794632042996.jpg"
+    "b-1794632042996": "covers/cloud/b-1794632042996.jpg",
+    "b-1794643734371": "covers/cloud/b-1794643734371.jpg"
   },
-  "savedAt": "2026-11-14T04:54:10.667Z"
+  "savedAt": "2026-11-14T08:09:01.670Z"
 }
