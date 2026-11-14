@@ -2184,6 +2184,25 @@
       "addedAt": "2026-11-14",
       "doubanUrl": "https://book.douban.com/subject/26591910/",
       "cover": ""
+    },
+    {
+      "id": "b-1794646085315",
+      "title": "传统十论",
+      "author": "秦晖",
+      "translator": "",
+      "subtitle": "本土社会的制度、文化及其变革",
+      "publisher": "复旦大学出版社",
+      "year": 2003,
+      "pubDate": "2003-10",
+      "pages": 404,
+      "binding": "平装",
+      "isbn": "9787309037128",
+      "genre": "社科",
+      "series": "名家专题精讲丛书",
+      "status": "pending",
+      "addedAt": "2026-11-14",
+      "doubanUrl": "https://book.douban.com/subject/1076378/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2356,7 +2375,8 @@
     "b-1794632042996": "covers/cloud/b-1794632042996.jpg",
     "b-1794643734371": "covers/cloud/b-1794643734371.jpg",
     "b-1794645653286": "covers/cloud/b-1794645653286.jpg",
-    "b-1794645760792": "covers/cloud/b-1794645760792.jpg"
+    "b-1794645760792": "covers/cloud/b-1794645760792.jpg",
+    "b-1794646085315": "covers/cloud/b-1794646085315.jpg"
   },
-  "savedAt": "2026-11-14T08:42:49.586Z"
+  "savedAt": "2026-11-14T08:48:11.712Z"
 }
