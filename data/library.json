@@ -2051,6 +2051,25 @@
       "addedAt": "2026-11-14",
       "doubanUrl": "https://book.douban.com/subject/38574975/",
       "cover": ""
+    },
+    {
+      "id": "b-1794621389647",
+      "title": "与希罗多德一起旅行",
+      "author": "[波] 雷沙德·卡普希钦斯基",
+      "translator": "马睿",
+      "subtitle": null,
+      "publisher": "云南人民出版社",
+      "year": 2025,
+      "pubDate": "2025-01",
+      "pages": 336,
+      "binding": "精装",
+      "isbn": "9787222229266",
+      "genre": "社科",
+      "series": "理想国·卡普希钦斯基作品系列",
+      "status": "pending",
+      "addedAt": "2026-11-14",
+      "doubanUrl": "https://book.douban.com/subject/36966387/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2216,7 +2235,8 @@
     "b-1794578463853": "covers/cloud/b-1794578463853.jpg",
     "b-1794578518009": "covers/cloud/b-1794578518009.jpg",
     "b-1794579274027": "covers/cloud/b-1794579274027.jpg",
-    "b-1794621278176": "covers/cloud/b-1794621278176.jpg"
+    "b-1794621278176": "covers/cloud/b-1794621278176.jpg",
+    "b-1794621389647": "covers/cloud/b-1794621389647.jpg"
   },
-  "savedAt": "2026-11-14T01:54:44.668Z"
+  "savedAt": "2026-11-14T01:56:35.304Z"
 }
