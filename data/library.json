@@ -2298,6 +2298,25 @@
       "addedAt": "2026-11-16",
       "doubanUrl": "https://book.douban.com/subject/36670487/",
       "cover": ""
+    },
+    {
+      "id": "b-1794854430931",
+      "title": "学术与政治",
+      "author": "[德] 马克斯·韦伯",
+      "translator": "钱永祥",
+      "subtitle": null,
+      "publisher": "上海三联书店",
+      "year": 2019,
+      "pubDate": "2019-04",
+      "pages": 376,
+      "binding": "精装",
+      "isbn": "9787542664648",
+      "genre": "社科",
+      "series": "Great Thoughts 书系",
+      "status": "pending",
+      "addedAt": "2026-11-16",
+      "doubanUrl": "https://book.douban.com/subject/30309618/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2477,7 +2496,8 @@
     "b-1794852132863": "covers/cloud/b-1794852132863.jpg",
     "b-1794852673883": "covers/cloud/b-1794852673883.jpg",
     "b-1794852999714": "covers/cloud/b-1794852999714.jpg",
-    "b-1794853978422": "covers/cloud/b-1794853978422.jpg"
+    "b-1794853978422": "covers/cloud/b-1794853978422.jpg",
+    "b-1794854430931": "covers/cloud/b-1794854430931.jpg"
   },
-  "savedAt": "2026-11-16T18:33:03.940Z"
+  "savedAt": "2026-11-16T18:40:36.754Z"
 }
