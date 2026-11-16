@@ -2317,6 +2317,25 @@
       "addedAt": "2026-11-16",
       "doubanUrl": "https://book.douban.com/subject/30309618/",
       "cover": ""
+    },
+    {
+      "id": "b-1794854878962",
+      "title": "变化社会中的政治秩序",
+      "author": "[美] 塞缪尔·P·亨廷顿",
+      "translator": "王冠华 / 刘为",
+      "subtitle": null,
+      "publisher": "上海人民出版社",
+      "year": 2015,
+      "pubDate": "2015-04",
+      "pages": 387,
+      "binding": "精装",
+      "isbn": "9787208127531",
+      "genre": "政治",
+      "series": "东方编译所译丛·精装书系",
+      "status": "pending",
+      "addedAt": "2026-11-16",
+      "doubanUrl": "https://book.douban.com/subject/26298609/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2497,7 +2516,8 @@
     "b-1794852673883": "covers/cloud/b-1794852673883.jpg",
     "b-1794852999714": "covers/cloud/b-1794852999714.jpg",
     "b-1794853978422": "covers/cloud/b-1794853978422.jpg",
-    "b-1794854430931": "covers/cloud/b-1794854430931.jpg"
+    "b-1794854430931": "covers/cloud/b-1794854430931.jpg",
+    "b-1794854878962": "covers/cloud/b-1794854878962.jpg"
   },
-  "savedAt": "2026-11-16T18:40:36.754Z"
+  "savedAt": "2026-11-16T18:48:05.077Z"
 }
