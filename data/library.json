@@ -2241,6 +2241,25 @@
       "addedAt": "2026-11-16",
       "doubanUrl": "https://book.douban.com/subject/30206893/",
       "cover": ""
+    },
+    {
+      "id": "b-1794852673883",
+      "title": "私人生活的变革",
+      "author": "阎云翔",
+      "translator": "龚小夏",
+      "subtitle": "一个中国村庄里的爱情、家庭与亲密关系（1949—1999）",
+      "publisher": "上海人民出版社",
+      "year": 2017,
+      "pubDate": "2017-03",
+      "pages": 350,
+      "binding": "精装",
+      "isbn": "9787208142107",
+      "genre": "社科",
+      "series": "阎云翔作品",
+      "status": "pending",
+      "addedAt": "2026-11-16",
+      "doubanUrl": "https://book.douban.com/subject/26952345/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2417,7 +2436,8 @@
     "b-1794646085315": "covers/cloud/b-1794646085315.jpg",
     "b-1794646230843": "covers/cloud/b-1794646230843.jpg",
     "b-1794851722438": "covers/cloud/b-1794851722438.jpg",
-    "b-1794852132863": "covers/cloud/b-1794852132863.jpg"
+    "b-1794852132863": "covers/cloud/b-1794852132863.jpg",
+    "b-1794852673883": "covers/cloud/b-1794852673883.jpg"
   },
-  "savedAt": "2026-11-16T18:02:18.699Z"
+  "savedAt": "2026-11-16T18:11:35.089Z"
 }
