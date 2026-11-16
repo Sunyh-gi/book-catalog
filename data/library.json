@@ -2203,6 +2203,25 @@
       "addedAt": "2026-11-14",
       "doubanUrl": "https://book.douban.com/subject/30422816/",
       "cover": ""
+    },
+    {
+      "id": "b-1794851722438",
+      "title": "近代中国社会的新陈代谢",
+      "author": "陈旭麓",
+      "translator": "",
+      "subtitle": null,
+      "publisher": "生活·读书·新知三联书店",
+      "year": 2025,
+      "pubDate": "2025-10",
+      "pages": 228,
+      "binding": "精装",
+      "isbn": "9787108081667",
+      "genre": "历史",
+      "series": "",
+      "status": "pending",
+      "addedAt": "2026-11-16",
+      "doubanUrl": "https://book.douban.com/subject/37454916/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2377,7 +2396,8 @@
     "b-1794645653286": "covers/cloud/b-1794645653286.jpg",
     "b-1794645760792": "covers/cloud/b-1794645760792.jpg",
     "b-1794646085315": "covers/cloud/b-1794646085315.jpg",
-    "b-1794646230843": "covers/cloud/b-1794646230843.jpg"
+    "b-1794646230843": "covers/cloud/b-1794646230843.jpg",
+    "b-1794851722438": "covers/cloud/b-1794851722438.jpg"
   },
-  "savedAt": "2026-11-14T08:57:44.737Z"
+  "savedAt": "2026-11-16T17:55:30.490Z"
 }
