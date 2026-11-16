@@ -2260,6 +2260,25 @@
       "addedAt": "2026-11-16",
       "doubanUrl": "https://book.douban.com/subject/26952345/",
       "cover": ""
+    },
+    {
+      "id": "b-1794852999714",
+      "title": "社会学的想象力",
+      "author": "[美] 查尔斯·赖特·米尔斯",
+      "translator": "李康",
+      "subtitle": null,
+      "publisher": "北京师范大学出版社",
+      "year": 2017,
+      "pubDate": "2017-03",
+      "pages": 370,
+      "binding": "精装",
+      "isbn": "9787303212842",
+      "genre": "社科",
+      "series": "米尔斯文集",
+      "status": "pending",
+      "addedAt": "2026-11-16",
+      "doubanUrl": "https://book.douban.com/subject/26874446/",
+      "cover": ""
     }
   ],
   "g": {
@@ -2437,7 +2456,8 @@
     "b-1794646230843": "covers/cloud/b-1794646230843.jpg",
     "b-1794851722438": "covers/cloud/b-1794851722438.jpg",
     "b-1794852132863": "covers/cloud/b-1794852132863.jpg",
-    "b-1794852673883": "covers/cloud/b-1794852673883.jpg"
+    "b-1794852673883": "covers/cloud/b-1794852673883.jpg",
+    "b-1794852999714": "covers/cloud/b-1794852999714.jpg"
   },
-  "savedAt": "2026-11-16T18:11:35.089Z"
+  "savedAt": "2026-11-16T18:16:45.139Z"
 }
